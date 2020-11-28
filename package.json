@@ -1,0 +1,21 @@
+{
+  "name": "crevice",
+  "version": "1.0.0",
+  "description": "Flexible student booking.",
+  "author": "Andrew Jones",
+  "private": true,
+  "scripts": {
+    "dev": "node server.js",
+    "start": "npm run dev"
+  },
+  "dependencies": {
+    "bcrypt": "^5.0.0",
+    "express": "^4.17.1",
+    "jsonwebtoken": "^8.5.1",
+    "morgan": "^1.10.0",
+    "node-fetch": "^2.6.1",
+    "pg": "8.4.2",
+    "sharp": "^0.26.2",
+    "uuid": "^8.3.1"
+  }
+}
