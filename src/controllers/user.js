@@ -11,23 +11,15 @@ const db = {
   organisations: organisationRepository
 };
 
-const getTeamMembers = async (req, res) => {
-  const users = await db.users.getTeamMembers(req.user.organisationId);
-  return res.json(users);
-}
-
 const create = async (req, res) => {
   const {
     firstName,
     lastName,
     email,
     username,
-    companyName,
-    companyPhone,
-    region,
-    password,
-    timezone } = req.body;
-  if (!req.user && (!companyName || !companyPhone || !region)) {
+    organisationName,
+    password } = req.body;
+  if (!req.user && (!organisationName)) {
     return res.sendStatus(400);
   }
   if (!firstName || !lastName || !email || username || !email.includes('@') || !password.length >= 6) {
@@ -37,22 +29,15 @@ const create = async (req, res) => {
   try {
     await client.query('begin');
     let organisationId;
-    let role;
+    let isAdmin = false;
     if (!req.user) {
       organisationId = await db.organisations.insert({
-        companyName,
-        companyPhone,
-        region
+        organisationName
       });
-      role = 'TeamLeader';
+      isAdmin = true;
     }
     else {
       organisationId = req.user.organisationId;
-      const canAddUser = await db.organisations.hasFreeUsers(organisationId, client);
-      if (!canAddUser) {
-        return res.sendStatus(403);
-      }
-      role = 'TeamMember';
     }
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash(password, salt);
@@ -65,9 +50,7 @@ const create = async (req, res) => {
       username,
       password: hash,
       refreshToken,
-      role,
-      organisationId,
-      timezone
+      organisationId
     };
 
     const userId = await db.users.insert(user, client);
@@ -79,9 +62,7 @@ const create = async (req, res) => {
       email,
       username,
       refreshToken,
-      role,
-      organisationId,
-      timezone
+      organisationId
     });
     return res.json({ token });
   }
@@ -168,15 +149,11 @@ const update = async (req, res) => {
 
 const deleteUser = async (req, res) => {
   const { userId } = req.body;
-  if (req.user.role !== 'TeamLeader') {
-    return res.sendStatus(401);
-  }
   await db.users.deleteById(userId, req.user.organisationId);
   return res.sendStatus(200);
 }
 
 module.exports = {
-  getTeamMembers,
   create,
   checkEmailExists,
   getToken,

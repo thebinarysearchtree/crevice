@@ -17,6 +17,8 @@ create table users (
     organisationId integer not null references organisations on delete cascade,
     createdAt timestamptz not null default now(),
     isAdmin boolean not null default false,
+    canBook boolean not null default true,
+    canCancel boolean not null default true,
     unique(organisationId, username)
 );
 
@@ -46,6 +48,18 @@ create table areas (
 
 create index areasOrganisationIdIndex on areas(organisationId);
 
+create table placements (
+    id serial primary key,
+    userId integer not null references users on delete cascade,
+    areaId integer not null references areas on delete cascade,
+    startTime timestamptz not null,
+    endTime timestamptz not null,
+    roleId integer not null references roles on delete cascade,
+    organisationId integer not null references organisations on delete cascade
+);
+
+create index placementsIndex on placements(areaId, startTime, endTime);
+
 create table areaCapacities (
     id serial primary key,
     areaId integer not null references areas on delete cascade,
@@ -68,6 +82,19 @@ create table shifts (
 );
 
 create index shiftsOrganisationIdStartTimeIndex on shifts(organisationId, startTime);
+
+create table bookings (
+    id serial primary key,
+    shiftId integer not null references shifts on delete cascade,
+    userId integer not null references users on delete cascade,
+    roleId integer not null references roles on delete cascade,
+    bookedAt timestamptz not null default now(),
+    cancelledAt timestamptz,
+    organisationId integer not null references organisations on delete cascade
+);
+
+create index bookingsShiftIdIndex on bookings(shiftId);
+create index bookingsUserIdIndex on bookings(userId);
 
 create table tasks (
     id serial primary key,
@@ -98,19 +125,30 @@ create table shiftRoles (
 
 create index shiftRolesShiftIdIndex on shiftRoles(shiftId);
 
-create table groups (
+create table shiftGroups (
     id serial primary key,
     name text not null,
     capacity integer,
     organisationId integer not null references organisations on delete cascade
 );
 
-create table groupCapacities (
+create table shiftGroupCapacities (
     id serial primary key,
-    groupId integer not null references groups on delete cascade,
+    shiftGroupId integer not null references shiftGroups on delete cascade,
     shiftId integer not null references shifts on delete cascade,
     capacity integer,
     organisationId integer not null references organisations on delete cascade
 );
 
-create index groupCapacitiesShiftIdIndex on groupCapacities(shiftId);
+create index shiftGroupCapacitiesShiftIdIndex on shiftGroupCapacities(shiftId);
+
+create table timePeriods (
+    id serial primary key,
+    areaId integer not null references areas on delete cascade,
+    startTime timestamptz not null,
+    endTime timestamptz not null,
+    capacity integer not null,
+    organisationId integer not null references organisations on delete cascade
+);
+
+create index timePeriodsIndex on timePeriods(areaId, startTime, endTime);
