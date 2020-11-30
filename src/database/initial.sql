@@ -17,8 +17,6 @@ create table users (
     organisationId integer not null references organisations on delete cascade,
     createdAt timestamptz not null default now(),
     isAdmin boolean not null default false,
-    canBook boolean not null default true,
-    canCancel boolean not null default true,
     unique(organisationId, username)
 );
 
@@ -55,13 +53,38 @@ create table placements (
     startTime timestamptz not null,
     endTime timestamptz not null,
     roleId integer not null references roles on delete cascade,
+    canBook boolean not null,
+    canCancel boolean not null,
+    canDelete boolean not null,
+    canEditBefore boolean not null,
+    canEditAfter boolean not null,
+    canChangeCapacity boolean not null,
     organisationId integer not null references organisations on delete cascade
 );
 
 create index placementsIndex on placements(areaId, startTime, endTime);
 
-create table areaCapacities (
+create table templates (
     id serial primary key,
+    name text not null,
+    createdAt timestamptz not null default now(),
+    createdBy integer references users on delete set null,
+    organisationId integer not null references organisations on delete cascade
+);
+
+create index templatesOrganisationIdIndex on templates(organisationId);
+
+create table templateApplications (
+    id serial primary key,
+    templateId integer not null references templates on delete cascade,
+    startTime timestamptz not null,
+    endTime timestamptz not null,
+    organisationId integer not null references organisations on delete cascade
+);
+
+create table templateAreaCapacities (
+    id serial primary key,
+    templateId integer not null references templates on delete cascade,
     areaId integer not null references areas on delete cascade,
     startTime timestamptz not null,
     endTime timestamptz not null,
@@ -69,19 +92,50 @@ create table areaCapacities (
     organisationId integer not null references organisations on delete cascade
 );
 
+create index templateAreaCapacitiesTemplateIdIndex on templateAreaCapacities(templateId);
+
+create table areaCapacities (
+    id serial primary key,
+    areaId integer not null references areas on delete cascade,
+    startTime timestamptz not null,
+    endTime timestamptz not null,
+    capacity integer not null,
+    templateId integer not null references areaCapacityTemplateApplications on delete set null,
+    organisationId integer not null references organisations on delete cascade
+);
+
 create index areaCapacitiesAreaIdIndex on areaCapacities(areaId);
 
-create table shifts (
+create table templateShifts (
     id serial primary key,
+    templateId integer not null references templates on delete cascade,
+    areaId integer not null references areas on delete cascade,
     startTime timestamptz not null,
     endTime timestamptz not null,
     breakSeconds integer not null,
     capacity integer,
-    notes text,
     organisationId integer not null references organisations on delete cascade
 );
 
-create index shiftsOrganisationIdStartTimeIndex on shifts(organisationId, startTime);
+create index templateShiftsTemplateIdIndex on templateShifts(templateId);
+
+create table shifts (
+    id serial primary key,
+    areaId integer not null references areas on delete cascade,
+    startTime timestamptz not null,
+    endTime timestamptz not null,
+    editedStartTime timestamptz,
+    editedEndTime timestamptz,
+    editedBy integer references users on delete set null,
+    breakSeconds integer not null,
+    cancelSeconds integer,
+    capacity integer,
+    notes text,
+    templateId integer references templateApplications on delete set null,
+    organisationId integer not null references organisations on delete cascade
+);
+
+create index shiftsIndex on shifts(areaId, startTime, endTime);
 
 create table bookings (
     id serial primary key,
@@ -90,6 +144,7 @@ create table bookings (
     roleId integer not null references roles on delete cascade,
     bookedAt timestamptz not null default now(),
     cancelledAt timestamptz,
+    cancelledBy integer references users on delete set null,
     organisationId integer not null references organisations on delete cascade
 );
 
@@ -125,10 +180,29 @@ create table shiftRoles (
 
 create index shiftRolesShiftIdIndex on shiftRoles(shiftId);
 
+create table templateShiftGroups (
+    id serial primary key,
+    templateId integer not null references templates on delete cascade,
+    capacity integer,
+    organisationId integer not null references organisations on delete cascade
+);
+
+create index templateShiftGroupsTemplateIdIndex on templateShiftGroups(templateId);
+
+create table templateShiftGroupCapacities (
+    id serial primary key,
+    groupId integer not null references templateShiftGroups on delete cascade,
+    templateShiftId integer not null references templateShifts on delete cascade,
+    capacity integer,
+    organisationId integer not null references organisations on delete cascade
+);
+
+create index shiftGroupTemplateShiftGroupCapacitiesGroupIdIndex on shiftGroupTemplateShiftGroupCapacities(groupId);
+
 create table shiftGroups (
     id serial primary key,
-    name text not null,
     capacity integer,
+    templateId integer references templateApplications on delete set null,
     organisationId integer not null references organisations on delete cascade
 );
 
@@ -142,12 +216,25 @@ create table shiftGroupCapacities (
 
 create index shiftGroupCapacitiesShiftIdIndex on shiftGroupCapacities(shiftId);
 
+create table templateTimePeriods (
+    id serial primary key,
+    templateId integer not null references templates on delete cascade,
+    areaId integer not null references areas on delete cascade,
+    startTime timestamptz not null,
+    endTime timestamptz not null,
+    capacity integer not null,
+    organisationId integer not null references organisations on delete cascade
+);
+
+create index timePeriodTemplateTimePeriodsTemplateIdIndex on timePeriodTemplateTimePeriods(templateId);
+
 create table timePeriods (
     id serial primary key,
     areaId integer not null references areas on delete cascade,
     startTime timestamptz not null,
     endTime timestamptz not null,
     capacity integer not null,
+    templateId integer references templateApplications on delete set null,
     organisationId integer not null references organisations on delete cascade
 );
 
