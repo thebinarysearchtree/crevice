@@ -36,6 +36,7 @@ create table roles (
     canEditBefore boolean not null,
     canEditAfter boolean not null,
     canChangeCapacity boolean not null,
+    canAssignTasks boolean not null,
     organisationId integer not null references organisations on delete cascade
 );
 
@@ -295,12 +296,25 @@ create table shiftTasks (
     id serial primary key,
     shiftId integer not null references shifts on delete cascade,
     taskId integer not null references tasks on delete cascade,
-    startTime timestamptz not null,
-    endTime timestamptz not null,
+    durationMinutes integer not null,
     organisationId integer not null references organisations on delete cascade
 );
 
 create index shiftTasksShiftIdIndex on shiftTasks(shiftId);
+
+create table adhocTasks (
+    id serial primary key,
+    bookingId integer not null references bookings on delete cascade,
+    taskId integer not null references tasks on delete cascade,
+    durationMinutes integer not null,
+    createdAt timestamptz not null default now(),
+    createdBy integer references users on delete set null,
+    removedAt timestamptz,
+    removedBy integer references users on delete set null,
+    organisationId integer not null references organisations on delete cascade
+);
+
+create index adhocTasksBookingIdIndex on adhocTasks(bookingId);
 
 create table shiftPrerequisites (
     id serial primary key,
@@ -396,6 +410,15 @@ create table questions (
 );
 
 create index questionsGroupIdIndex on questions(groupId);
+
+create table questionRoles (
+    id serial primary key,
+    questionId integer not null references questions on delete cascade,
+    roleId integer not null references roles on delete cascade,
+    organisationId integer not null references organisations on delete cascade
+);
+
+create index questionRolesQuestionIdIndex on questionRoles(questionId);
 
 create table options (
     id serial primary key,
