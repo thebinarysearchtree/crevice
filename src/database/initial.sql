@@ -190,7 +190,7 @@ create table areaCapacities (
     startTime timestamptz not null,
     endTime timestamptz not null,
     capacity integer not null,
-    templateId integer not null references areaCapacityTemplateApplications on delete set null,
+    templateId integer not null references templateApplications on delete set null,
     organisationId integer not null references organisations on delete cascade
 );
 
@@ -353,7 +353,7 @@ create table templateShiftGroupCapacities (
     organisationId integer not null references organisations on delete cascade
 );
 
-create index shiftGroupTemplateShiftGroupCapacitiesGroupIdIndex on shiftGroupTemplateShiftGroupCapacities(groupId);
+create index templateShiftGroupCapacitiesGroupIdIndex on templateShiftGroupCapacities(groupId);
 
 create table shiftGroups (
     id serial primary key,
@@ -382,7 +382,7 @@ create table templateTimePeriods (
     organisationId integer not null references organisations on delete cascade
 );
 
-create index timePeriodTemplateTimePeriodsTemplateIdIndex on timePeriodTemplateTimePeriods(templateId);
+create index templateTimePeriodsTemplateIdIndex on templateTimePeriods(templateId);
 
 create table timePeriods (
     id serial primary key,
