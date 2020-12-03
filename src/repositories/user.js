@@ -91,16 +91,17 @@ const changePassword = async (hash, refreshToken, id, client = pool) => {
 const update = async ({
   firstName,
   lastName,
-  email
+  email,
+  username
 }, userId, client = pool) => {
   await client.query(`
     update users 
     set 
       firstName = $1,
       lastName = $2,
-      email = $3
-    where id = $4`, [firstName, lastName, email, userId]);
-  return res.sendStatus(200);
+      email = $3,
+      username = $4
+    where id = $5`, [firstName, lastName, email, username, userId]);
 }
 
 const getPassword = async (id, client = pool) => {

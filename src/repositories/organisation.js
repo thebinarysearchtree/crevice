@@ -21,13 +21,17 @@ const getById = async (id, client = pool) => {
 }
 
 const update = async ({
-  name
+  name,
+  logoImageId
 }, organisationId, client = pool) => {
   await client.query(`
     update organisations
-    set name = $1
-    where id = $2`, [
+    set 
+      name = $1,
+      logoImageId = $2
+    where id = $3`, [
       name,
+      logoImageId,
       organisationId]);
 }
 

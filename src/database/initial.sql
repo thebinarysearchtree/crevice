@@ -10,19 +10,32 @@ create table users (
     id serial primary key,
     firstName text not null,
     lastName text not null,
-    email text not null unique,
+    email text not null,
     username text not null,
     password text not null,
     refreshToken uuid not null,
     organisationId integer not null references organisations on delete cascade,
     createdAt timestamptz not null default now(),
     isAdmin boolean not null,
-    unique(organisationId, username)
+    unique(username, organisationId),
+    unique(email, organisationId)
 );
+
+create index usersOrganisationIdIndex on users(organisationId);
 
 create table roles (
     id serial primary key,
     name text not null,
+    canBookBefore boolean not null,
+    canBookAfter boolean not null,
+    canCancelBefore boolean not null,
+    canCancelAfter boolean not null,
+    canBookForRoleId integer references roles on delete set null,
+    canCancelForRoleId integer references roles on delete set null,
+    canDelete boolean not null,
+    canEditBefore boolean not null,
+    canEditAfter boolean not null,
+    canChangeCapacity boolean not null,
     organisationId integer not null references organisations on delete cascade
 );
 
@@ -51,6 +64,7 @@ create table placementGroups (
     name text not null,
     startTime timestamptz,
     endTime timestamptz,
+    notes text,
     organisationId integer not null references organisations on delete cascade
 );
 
@@ -67,6 +81,65 @@ create table placements (
 create index placementsGroupIdIndex on placements(groupId);
 create index placementsUserIdIndex on placements(userId);
 
+create table fieldGroups (
+    id serial primary key,
+    label text not null,
+    organisationId integer not null references organisations on delete cascade
+);
+
+create index fieldGroupsOrganisationIdIndex on fieldGroups(organisationId);
+
+create table fields (
+    id serial primary key,
+    groupId integer references fieldGroups on delete cascade,
+    label text not null,
+    fieldType text not null check (fieldType in (
+        'smallText',
+        'text',
+        'textarea',
+        'select',
+        'date',
+        'numeric'
+    )),
+    organisationId integer not null references organisations on delete cascade
+);
+
+create index fieldsGroupIdIndex on fields(groupId);
+create index fieldsOrganisationIdIndex on fields(organisationId);
+
+create table fieldItems (
+    id serial primary key,
+    fieldId integer not null references fields on delete cascade,
+    label text not null,
+    organisationId integer not null references organisations on delete cascade
+);
+
+create index fieldItemsFieldIdIndex on fieldItems(fieldId);
+
+create table placementFields (
+    id serial primary key,
+    placementId integer not null references placements on delete cascade,
+    fieldId integer not null references fields on delete cascade,
+    requiredValue text,
+    atLeast timestamptz,
+    atMost timestamptz,
+    organisationId integer not null references organisations on delete cascade
+);
+
+create index placementFieldsPlacementIdIndex on placementFields(placementId);
+
+create table userFields (
+    id serial primary key,
+    userId integer not null references users on delete cascade,
+    fieldId integer not null references fields on delete cascade,
+    fieldItemId integer references fieldItems on delete cascade,
+    fieldValue text,
+    dateValue timestamptz,
+    organisationId integer not null references organisations on delete cascade
+);
+
+create index userFieldsUserIdIndex on userFields(userId);
+
 create table userAreas (
     id serial primary key,
     userId integer not null references users on delete cascade,
@@ -74,12 +147,6 @@ create table userAreas (
     startTime timestamptz not null,
     endTime timestamptz not null,
     roleId integer not null references roles on delete cascade,
-    canBook boolean not null,
-    canCancel boolean not null,
-    canDelete boolean not null,
-    canEditBefore boolean not null,
-    canEditAfter boolean not null,
-    canChangeCapacity boolean not null,
     organisationId integer not null references organisations on delete cascade
 );
 
@@ -158,8 +225,9 @@ create table shifts (
     editedStartTime timestamptz,
     editedEndTime timestamptz,
     editedBy integer references users on delete set null,
-    breakSeconds integer not null,
-    cancelSeconds integer,
+    breakMinutes integer not null,
+    cancelBeforeMinutes integer,
+    bookBeforeMinutes integer,
     capacity integer,
     notes text,
     questionGroupId integer references questionGroups on delete set null,
@@ -195,6 +263,7 @@ create table bookings (
     userId integer references users on delete set null,
     roleId integer not null references roles on delete cascade,
     bookedAt timestamptz not null default now(),
+    bookedBy integer references users on delete set null,
     cancelledAt timestamptz,
     cancelledBy integer references users on delete set null,
     templateId integer references bookingTemplates on delete set null,
@@ -316,7 +385,11 @@ create index timePeriodsIndex on timePeriods(areaId, startTime, endTime);
 create table questions (
     id serial primary key,
     groupId integer not null references questionGroups on delete cascade,
-    questionType text not null,
+    questionType text not null check (questionType in (
+        'Multiple-choice',
+        'Comment',
+        'Scale',
+        'Numeric')),
     questionOrder integer not null,
     question text not null,
     organisationId integer not null references organisations on delete cascade
@@ -339,7 +412,7 @@ create index optionsQuestionIdIndex on options(questionId);
 create table answers (
     id serial primary key,
     bookingId integer not null references bookings on delete cascade,
-    optionId integer not null references options on delete cascade,
+    optionId integer not null references options,
     comments text,
     organisationId integer not null references organisations on delete cascade
 );
