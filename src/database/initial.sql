@@ -2,7 +2,6 @@ create table organisations (
     id serial primary key,
     name text not null,
     createdAt timestamptz not null default now(),
-    trialEnds timestamptz default now() + interval '14 days',
     logoImageId uuid
 );
 
@@ -10,18 +9,20 @@ create table users (
     id serial primary key,
     firstName text not null,
     lastName text not null,
-    email text not null,
-    username text not null,
+    email text not null unique,
     password text not null,
     refreshToken uuid not null,
-    organisationId integer not null references organisations on delete cascade,
+    emailToken uuid,
     createdAt timestamptz not null default now(),
-    isAdmin boolean not null,
-    unique(username, organisationId),
-    unique(email, organisationId)
+    isAdmin boolean not null
 );
 
-create index usersOrganisationIdIndex on users(organisationId);
+create table userOrganisations (
+    id serial primary key,
+    userId integer not null references users on delete cascade,
+    organisationId integer not null references organisations on delete cascade,
+    unique(userId, organisationId)
+);
 
 create table roles (
     id serial primary key,

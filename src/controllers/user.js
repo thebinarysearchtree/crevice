@@ -11,57 +11,49 @@ const db = {
   organisations: organisationRepository
 };
 
-const create = async (req, res) => {
+const signUp = async (req, res) => {
   const {
     firstName,
     lastName,
     email,
-    username,
     organisationName,
     password } = req.body;
-  if (!req.user && (!organisationName)) {
-    return res.sendStatus(400);
-  }
   if (!firstName || !lastName || !email || username || !email.includes('@') || !password.length >= 6) {
     return res.sendStatus(400);
   }
   const client = await getPool().connect();
   try {
     await client.query('begin');
-    let organisationId;
-    let isAdmin = false;
-    if (!req.user) {
-      organisationId = await db.organisations.insert({
-        organisationName
-      });
-      isAdmin = true;
-    }
-    else {
-      organisationId = req.user.organisationId;
-    }
+    const organisationId = await db.organisations.insert({
+      organisationName
+    });
+    const isAdmin = true;
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash(password, salt);
     const refreshToken = uuid();
+    const emailToken = null;
 
     const user = {
       firstName,
       lastName,
       email,
-      username,
       password: hash,
       refreshToken,
+      emailToken,
+      isAdmin,
       organisationId
     };
 
     const userId = await db.users.insert(user, client);
+    await db.users.addOrganisation(userId, organisationId, client);
     await client.query('commit');
     const token = createToken({
-      userId,
+      id: userId,
       firstName,
       lastName,
       email,
-      username,
       refreshToken,
+      isAdmin,
       organisationId
     });
     return res.json({ token });
@@ -82,13 +74,13 @@ const checkEmailExists = async (req, res) => {
 }
 
 const getToken = async (req, res) => {
-  const { email, password: suppliedPassword } = req.body;
-  const user = await db.users.getByEmail(email);
+  const {
+    email,
+    password: suppliedPassword } = req.body;
+  const organisationId = req.baseUrl.slice(1);
+  const user = await db.users.getByEmail(email, organisationId);
   if (!user) {
     return res.sendStatus(404);
-  }
-  if (user.trialEnds && user.trialEnds.getTime() < Date.now()) {
-    return res.sendStatus(401);
   }
   const {
     password: storedPassword,
@@ -105,9 +97,6 @@ const refreshToken = async (req, res) => {
   const expiredToken = req.body.token;
   try {
     const data = jwt.verify(expiredToken, config.key, { ignoreExpiration: true });
-    if (data.trialEnds && data.trialEnds.getTime() < Date.now()) {
-      return res.sendStatus(401);
-    }
     const refreshToken = await db.users.getRefreshToken(data.id);
     if (data.refreshToken === refreshToken) {
       const token = createToken(data);
@@ -154,7 +143,7 @@ const deleteUser = async (req, res) => {
 }
 
 module.exports = {
-  create,
+  signUp,
   checkEmailExists,
   getToken,
   refreshToken,

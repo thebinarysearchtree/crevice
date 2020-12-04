@@ -5,7 +5,7 @@ const userController = require('../controllers/user');
 
 let wrap = fn => (...args) => fn(...args).catch(args[2]);
 
-router.post('/create', wrap(userController.create));
+router.post('/signup', wrap(userController.create));
 router.post('/checkemailexists', auth, wrap(userController.checkEmailExists));
 router.post('/gettoken', wrap(userController.getToken));
 router.post('/refreshtoken', wrap(userController.refreshToken));

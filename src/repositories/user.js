@@ -6,9 +6,10 @@ const insert = async ({
   firstName,
   lastName,
   email,
-  username,
   password,
   refreshToken,
+  emailToken,
+  isAdmin,
   organisationId
 }, client = pool) => {
   const result = await client.query(`
@@ -16,20 +17,30 @@ const insert = async ({
       firstName,
       lastName,
       email,
-      username,
       password,
       refreshToken,
+      emailToken,
+      isAdmin,
       organisationId)
-    values($1, $2, $3, $4, $5, $6, $7)
+    values($1, $2, $3, $4, $5, $6, $7, $8)
     returning id`, [
-      firstName, 
-      lastName, 
-      email, 
-      username, 
-      password, 
-      refreshToken, 
+      firstName,
+      lastName,
+      email,
+      password,
+      refreshToken,
+      emailToken,
+      isAdmin,
       organisationId]);
   return result.rows[0].id;
+}
+
+const addOrganisation = async (userId, organisationId, client = pool) => {
+  await client.query(`
+    insert into userOrganisations(
+      userId,
+      organisationId)
+    values($1, $2)`, [userId, organisationId]);
 }
 
 const checkEmailExists = async (email, client = pool) => {
@@ -40,7 +51,7 @@ const checkEmailExists = async (email, client = pool) => {
   return result.rows[0].exists;
 }
 
-const getByEmail = async (email, client = pool) => {
+const getByEmail = async (email, organisationId, client = pool) => {
   const result = await client.query(`
     select 
       u.id,
@@ -49,12 +60,15 @@ const getByEmail = async (email, client = pool) => {
       u.email,
       u.password,
       u.refreshToken as "refreshToken",
-      u.organisationId as "organisationId",
-      o.trialEnds
-    from users u, organisations o
-    where 
-      u.organisationId = o.id and 
-      u.email = $1`, [email]);
+      u.isAdmin as "isAdmin",
+      o.organisationId as "organisationId"
+    from 
+      users u,
+      userOrganisations o
+    where
+      u.email = $1 and
+      u.id = o.userId and
+      o.organisationId = $2`, [email, organisationId]);
   return result.rows[0];
 }
 
@@ -64,21 +78,6 @@ const getRefreshToken = async (id, client = pool) => {
       from users
       where id = $1`, [id]);
   return result.rows[0].refreshToken;
-}
-
-const getById = async (id, client = pool) => {
-  const result = await client.query(`
-    select 
-      id,
-      firstName as "firstName",
-      lastName as "lastName,
-      email,
-      password,
-      refreshToken as "refreshToken",
-      organisationId as "organisationId" 
-    from users 
-    where id = $1`, [id]);
-  return result.rows[0];
 }
 
 const changePassword = async (hash, refreshToken, id, client = pool) => {
@@ -91,17 +90,15 @@ const changePassword = async (hash, refreshToken, id, client = pool) => {
 const update = async ({
   firstName,
   lastName,
-  email,
-  username
+  email
 }, userId, client = pool) => {
   await client.query(`
     update users 
     set 
       firstName = $1,
       lastName = $2,
-      email = $3,
-      username = $4
-    where id = $5`, [firstName, lastName, email, username, userId]);
+      email = $3
+    where id = $4`, [firstName, lastName, email, userId]);
 }
 
 const getPassword = async (id, client = pool) => {
@@ -122,10 +119,10 @@ const deleteById = async (userId, organisationId, client = pool) => {
 
 module.exports = {
   insert,
+  addOrganisation,
   checkEmailExists,
   getByEmail,
   getRefreshToken,
-  getById,
   changePassword,
   update,
   getPassword,
