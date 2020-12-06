@@ -1,17 +1,12 @@
 const { Pool } = require('pg');
-const types = require('pg').types;
+const { database: config } = require('../../config');
 
 let pool = null;
 
 const getPool = () => {
   if (!pool) {
     try {
-      pool = new Pool({
-        user: 'stampede',
-        host: 'localhost',
-        database: 'stampede',
-        password: 'stampede'
-      });
+      pool = new Pool(config);
     }
     catch (e) {
       console.error(e);

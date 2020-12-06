@@ -5,6 +5,13 @@ create table organisations (
     logoImageId uuid
 );
 
+create table tags (
+    id serial primary key,
+    tag text not null,
+    organisationId integer not null references organisations on delete cascade,
+    unique(tag, organisationId)
+);
+
 create table users (
     id serial primary key,
     firstName text not null,
@@ -13,9 +20,16 @@ create table users (
     password text not null,
     refreshToken uuid not null,
     emailToken uuid,
+    emailTokenExpiry timestamptz,
     createdAt timestamptz not null default now(),
-    isAdmin boolean not null
+    isAdmin boolean not null,
+    isDisabled boolean not null default false,
+    failedPasswordAttempts integer not null default 0,
+    imageId uuid,
+    tagId integer references tags on delete set null
 );
+
+create index usersTagIdIndex on users(tagId);
 
 create table userOrganisations (
     id serial primary key,
@@ -38,6 +52,7 @@ create table roles (
     canEditAfter boolean not null,
     canChangeCapacity boolean not null,
     canAssignTasks boolean not null,
+    canInviteUsers boolean not null,
     organisationId integer not null references organisations on delete cascade
 );
 
