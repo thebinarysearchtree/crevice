@@ -66,6 +66,31 @@ const signUp = async (req, res) => {
   }
 }
 
+const verify = async (req, res) => {
+  const [userId, emailToken] = req.path.slice(1).split('/');
+  const client = await getPool().connect();
+  try {
+    await client.query('begin');
+    const attempts = await db.users.getFailedPasswordAttempts(userId, client);
+    const verified = await db.users.verify(userId, emailToken, client);
+    if (!verified) {
+      attempts++;
+      await db.users.updateFailedPasswordAttempts(userId, attempts, client);
+      if (attempts === 5) {
+        await db.users.disable(userId, client);
+      }
+    }
+    await client.query('commit');
+  }
+  catch (e) {
+    await client.query('rollback');
+    return res.sendStatus(500);
+  }
+  finally {
+    client.release();
+  }
+}
+
 const inviteUsers = async (req, res) => {
   if (!req.user.isAdmin) {
     const canInvite = req.user.roles.includes(r => r.canInviteUsers);
@@ -120,11 +145,19 @@ const inviteUsers = async (req, res) => {
     });
     promises.push(promise);
   }
-  await Promise.all(promises);
+  const results = await Promise.all(promises);
+  const rejectedEmails = results.flatMap(r => r.rejected);
+  
+  return res.json(rejectedEmails);
 }
 
 const resendInvitation = async (req, res) => {
-
+  if (!req.user.isAdmin) {
+    const canInvite = req.user.roles.includes(r => r.canInviteUsers);
+    if (!canInvite) {
+      return res.sendStatus(401);
+    }
+  }
 }
 
 const checkEmailExists = async (req, res) => {

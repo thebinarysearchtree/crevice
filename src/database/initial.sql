@@ -24,6 +24,7 @@ create table users (
     createdAt timestamptz not null default now(),
     isAdmin boolean not null,
     isDisabled boolean not null default false,
+    isVerified boolean not null default false,
     failedPasswordAttempts integer not null default 0,
     imageId uuid,
     tagId integer references tags on delete set null

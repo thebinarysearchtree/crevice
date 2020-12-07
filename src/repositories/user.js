@@ -229,6 +229,16 @@ const update = async ({
     where id = $4`, [firstName, lastName, email, userId]);
 }
 
+const getFailedPasswordAttempts = async (userId, client = pool) => {
+  const result = await client.query(`
+    select failedPasswordAttempts
+    from users
+    where
+      id = $1 and
+      isDisabled is false`, [userId]);
+  return result.rows[0][0];
+}
+
 const updateFailedPasswordAttempts = async (userId, amount, client = pool) => {
   await client.query(`
     update users
@@ -248,6 +258,17 @@ const enable = async (userId, client = pool) => {
     update users
     set isDisabled = false
     where id = $1`, [userId]);
+}
+
+const verify = async (userId, emailToken, client = pool) => {
+  const result = await client.query(`
+    update users
+    set isVerified = true
+    where
+      id = $1 and
+      emailToken = $2 and
+      emailTokenExpiry > now()`, [userId, emailToken]);
+  return result.rowCount === 1;
 }
 
 const getPassword = async (id, client = pool) => {
@@ -275,9 +296,11 @@ module.exports = {
   getRefreshToken,
   changePassword,
   update,
+  getFailedPasswordAttempts,
   updateFailedPasswordAttempts,
   disable,
   enable,
+  verify,
   getPassword,
   deleteById
 };
