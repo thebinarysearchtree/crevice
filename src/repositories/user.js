@@ -8,8 +8,7 @@ const insert = async ({
   email,
   password,
   refreshToken,
-  emailToken = null,
-  emailTokenExpiry = null,
+  emailToken,
   isAdmin,
   organisationId
 }, client = pool) => {
@@ -21,10 +20,9 @@ const insert = async ({
       password,
       refreshToken,
       emailToken,
-      emailTokenExpiry,
       isAdmin,
       organisationId)
-    values($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    values($1, $2, $3, $4, $5, $6, $7, $8)
     returning id`, [
       firstName,
       lastName,
@@ -32,7 +30,6 @@ const insert = async ({
       password,
       refreshToken,
       emailToken,
-      emailTokenExpiry,
       isAdmin,
       organisationId]);
   return result.rows[0].id;
@@ -46,8 +43,7 @@ const insertMany = async (users, tagId, organisationId) => {
       email,
       password,
       refreshToken,
-      emailToken = null,
-      emailTokenExpiry = null,
+      emailToken,
       isAdmin,
       imageId
     } = u;
@@ -58,13 +54,12 @@ const insertMany = async (users, tagId, organisationId) => {
       password,
       refreshToken,
       emailToken,
-      emailTokenExpiry,
       isAdmin,
       imageId
     };
   });
   let params = users
-    .map((u, i) => `($1, $2, $${i + 3}, $${i + 4}, $${i + 5}, $${i + 6}, $${i + 7}, $${i + 8}, $${i + 9}, $${i + 10}, $${i + 11})`)
+    .map((u, i) => `($1, $2, $${i + 3}, $${i + 4}, $${i + 5}, $${i + 6}, $${i + 7}, $${i + 8}, $${i + 9}, $${i + 10})`)
     .join(', ');
   const client = pool.connect();
   try {
@@ -79,7 +74,6 @@ const insertMany = async (users, tagId, organisationId) => {
         password,
         refreshToken,
         emailToken,
-        emailTokenExpiry,
         isAdmin,
         imageId)
       values${params}
@@ -126,6 +120,34 @@ const checkEmailExists = async (email, client = pool) => {
       select 1 from users 
       where email = $1) as exists`, [email]);
   return result.rows[0].exists;
+}
+
+const getById = async (userId, organisationId, client = pool) => {
+  const result = await client.query(`
+    select
+      id,
+      firstName,
+      lastName,
+      email,
+      emailToken
+    from users
+    where
+      id = $1 and
+      organisationId = $2`, [userId, organisationId]);
+  return result.rows[0];
+}
+
+const setEmailToken = async (email, emailToken, client = pool) => {
+  const result = await client.query(`
+    update users
+    set
+      emailToken = $2,
+      emailTokenExpiry = now() + interval '1 day'
+    where
+      email = $1 and
+      isDisabled is false
+    returning id`, [email, emailToken]);
+  return result.rows[0][0];
 }
 
 const getByEmail = async (email, organisationId, client = pool) => {
@@ -178,6 +200,7 @@ const getByEmail = async (email, organisationId, client = pool) => {
       u.refreshToken as "refreshToken",
       u.isAdmin as "isAdmin",
       u.isDisabled as "isDisabled",
+      u.isVerified as "isVerified",
       u.failedPasswordAttempts as "failedPasswordAttempts",
       case when 
         r.email is null then json_build_array()
@@ -215,6 +238,20 @@ const changePassword = async (hash, refreshToken, id, client = pool) => {
     where id = $3`, [hash, refreshToken, id]);
 }
 
+const changePasswordWithToken = async (userId, emailToken, hash, client = pool) => {
+  const result = await client.query(`
+    update users
+    set 
+      password = $3,
+      isVerified = true
+    where
+      id = $1 and
+      emailToken = $2 and
+      emailTokenExpiry > now() and
+      isDisabled is false`, [userId, emailToken, hash]);
+  return result.rowCount === 1;
+}
+
 const update = async ({
   firstName,
   lastName,
@@ -229,21 +266,24 @@ const update = async ({
     where id = $4`, [firstName, lastName, email, userId]);
 }
 
-const getFailedPasswordAttempts = async (userId, client = pool) => {
-  const result = await client.query(`
-    select failedPasswordAttempts
-    from users
+const resetFailedPasswordAttempts = async (userId, client = pool) => {
+  await client.query(`
+    update users
+    set failedPasswordAttempts = 0
+    where id = $1`, [userId, amount]);
+}
+
+const incrementFailedPasswordAttempts = async (userId, client = pool) => {
+  await client.query(`
+    update users
+    set 
+      failedPasswordAttempts = failedPasswordAttempts + 1,
+      isDisabled = case when 
+        (failedPasswordAttempts + 1) = 5 then true
+        else isDisabled end
     where
       id = $1 and
       isDisabled is false`, [userId]);
-  return result.rows[0][0];
-}
-
-const updateFailedPasswordAttempts = async (userId, amount, client = pool) => {
-  await client.query(`
-    update users
-    set failedPasswordAttempts = $2
-    where id = $1`, [userId, amount]);
 }
 
 const disable = async (userId, client = pool) => {
@@ -263,9 +303,15 @@ const enable = async (userId, client = pool) => {
 const verify = async (userId, emailToken, client = pool) => {
   const result = await client.query(`
     update users
-    set isVerified = true
+    set 
+      isVerified = true,
+      emailToken = null,
+      emailTokenExpiry = null
     where
       id = $1 and
+      isDisabled is false and
+      isVerified is false and
+      emailToken is not null and
       emailToken = $2 and
       emailTokenExpiry > now()`, [userId, emailToken]);
   return result.rowCount === 1;
@@ -292,12 +338,15 @@ module.exports = {
   insertMany,
   addOrganisation,
   checkEmailExists,
+  getById,
+  setEmailToken,
   getByEmail,
   getRefreshToken,
   changePassword,
+  changePasswordWithToken,
   update,
-  getFailedPasswordAttempts,
-  updateFailedPasswordAttempts,
+  resetFailedPasswordAttempts,
+  incrementFailedPasswordAttempts,
   disable,
   enable,
   verify,

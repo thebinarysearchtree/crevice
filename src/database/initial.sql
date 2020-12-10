@@ -12,6 +12,19 @@ create table tags (
     unique(tag, organisationId)
 );
 
+create table emailTemplates (
+    id serial primary key,
+    type text not null,
+    name text not null,
+    subject text not null,
+    slate json not null,
+    html text not null,
+    plaintext text not null,
+    organisationId integer not null references organisations on delete cascade
+);
+
+create index emailTemplatesOrganisationIdIndex on emailTemplates(organisationId);
+
 create table users (
     id serial primary key,
     firstName text not null,
@@ -20,7 +33,7 @@ create table users (
     password text not null,
     refreshToken uuid not null,
     emailToken uuid,
-    emailTokenExpiry timestamptz,
+    emailTokenExpiry timestamptz default now() + interval '7 days',
     createdAt timestamptz not null default now(),
     isAdmin boolean not null,
     isDisabled boolean not null default false,
@@ -68,6 +81,27 @@ create table userRoles (
 
 create index userRolesUserIdIndex on userRoles(userId);
 
+create table files (
+    id uuid primary key,
+    name text not null,
+    sizeBytes integer not null,
+    fileType text not null,
+    uploadedBy integer references users on delete set null,
+    uploadedAt timestamptz not null default now(),
+    organisationId integer not null references organisations on delete cascade
+);
+
+create index filesOrganisationIdIndex on files(organisationId);
+
+create table userFiles (
+    id serial primary key,
+    userId integer not null references users on delete cascade,
+    fileId uuid not null references files on delete cascade,
+    organisationId integer not null references organisations on delete cascade
+);
+
+create index userFilesUserIdIndex on userFiles(userId);
+
 create table areas (
     id serial primary key,
     name text not null,
@@ -98,6 +132,15 @@ create table placements (
 
 create index placementsGroupIdIndex on placements(groupId);
 create index placementsUserIdIndex on placements(userId);
+
+create table placementFiles (
+    id serial primary key,
+    placementId integer not null references placements on delete cascade,
+    fileId uuid not null references files on delete cascade,
+    organisationId integer not null references organisations on delete cascade
+);
+
+create index placementFilesPlacementIdIndex on placementFiles(placementId);
 
 create table fieldGroups (
     id serial primary key,
