@@ -14,7 +14,11 @@ create table tags (
 
 create table emailTemplates (
     id serial primary key,
-    type text not null,
+    type text not null check (type in (
+        'signup',
+        'invite',
+        'lostPassword'
+    )),
     name text not null,
     subject text not null,
     slate json not null,

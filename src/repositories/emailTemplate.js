@@ -8,7 +8,8 @@ const insert = async ({
   subject,
   slate,
   html,
-  plaintext
+  plaintext,
+  isDefault = false
 }, organisationId, client = pool) => {
   const result = await client.query(`
     insert into emailTemplates(
@@ -18,9 +19,18 @@ const insert = async ({
       slate,
       html,
       plaintext,
+      isDefault,
       organisationId)
-    values($1, $2, $3, $4, $5, $6)
-    returning id`, [type, name, subject, slate, html, plaintext, organisationId]);
+    values($1, $2, $3, $4, $5, $6, $7, $8)
+    returning id`, [
+      type, 
+      name, 
+      subject, 
+      slate, 
+      html, 
+      plaintext, 
+      isDefault, 
+      organisationId]);
   return result.rows[0][0];
 }
 

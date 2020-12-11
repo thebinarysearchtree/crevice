@@ -6,7 +6,8 @@ const config = require('../../config');
 const userRepository = require('../repositories/user');
 const organisationRepository = require('../repositories/organisation');
 const emailTemplateRepository = require('../repositories/emailTemplate');
-const mailer = require('../services/email');
+const mailer = require('../services/emailTemplate');
+const populate = require('../database/populate');
 
 const db = {
   users: userRepository,
@@ -29,7 +30,8 @@ const signUp = async (req, res) => {
     await client.query('begin');
     const organisationId = await db.organisations.insert({
       organisationName
-    });
+    }, client);
+    await populate(organisationId, client);
     const isAdmin = true;
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash(password, salt);
@@ -52,19 +54,13 @@ const signUp = async (req, res) => {
     await client.query('commit');
 
     const url = `https://${config.host}/invite/${userId}/${emailToken}`;
-    const subject = 'Welcome to crevice';
-    const plaintext = `
-      Hi ${firstName}, 
-      Click this link to finish the signup process: ${url}`;
-    const html = `<p>${plaintext}</p>`;
+    const rejected = await mailer.send('signup', [{
+      firstName,
+      email,
+      url
+    }], null, organisationId);
 
-    const result = await mailer.send({
-      to: email,
-      subject,
-      text: plaintext,
-      html
-    });
-    return res.json(result.rejected);
+    return res.json(rejected);
   }
   catch (e) {
     await client.query('rollback');
@@ -99,40 +95,6 @@ const verify = async (req, res) => {
   finally {
     client.release();
   }
-}
-
-const makeInvitationEmail = ({
-  template,
-  userId,
-  firstName,
-  lastName,
-  emailToken
-}) => {
-  const url = `https://${config.host}/invite/${userId}/${emailToken}`;
-  let subject, plaintext, html;
-  if (template) {
-    subject = template.subject;
-    plaintext = template.plaintext
-      .replace(/{firstName}/, firstName)
-      .replace(/{lastName}/, lastName)
-      .replace(/{url}/, url);
-    html = template.html
-      .replace(/{firstName}/, firstName)
-      .replace(/{lastName}/, lastName)
-      .replace(/{url}/, url);
-  }
-  else {
-    subject = 'Welcome to crevice';
-    plaintext = `
-      Hi ${firstName}, you have been invited to join Crevice. 
-      Click this link to finish the process: ${url}`;
-    html = `<p>${plaintext}</p>`;
-  }
-  return {
-    subject,
-    plaintext,
-    html
-  };
 }
 
 const inviteUsers = async (req, res) => {
@@ -173,37 +135,16 @@ const inviteUsers = async (req, res) => {
     });
   }
   const storedUsers = await db.users.insertMany(users, tagId, organisationId);
-  const promises = [];
-  let template;
-  if (emailTemplateId) {
-    template = await db.emailTemplates.getById(emailTemplateId, organisationId);
-  }
-  for (const storedUser of storedUsers) {
-    const {
-      email: to,
-      id: userId,
-      emailToken,
-      firstName,
-      lastName } = storedUser;
-    const { subject, plaintext, html } = makeInvitationEmail({
-      template,
-      userId,
-      firstName,
-      lastName,
-      emailToken
-    });
-    const promise = mailer.send({
-      to,
-      subject,
-      text: plaintext,
-      html
-    });
-    promises.push(promise);
-  }
-  const results = await Promise.all(promises);
-  const rejectedEmails = results.flatMap(r => r.rejected);
-  
-  return res.json(rejectedEmails);
+  const emailUsers = storedUsers.map(u => {
+    return {
+      email: u.email,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      url: `https://${config.host}/invite/${u.id}/${u.emailToken}`
+    }
+  });
+  const rejected = await mailer.send('invite', emailUsers, emailTemplateId, organisationId);
+  return res.json(rejected);
 }
 
 const resendInvitation = async (req, res) => {
@@ -218,48 +159,26 @@ const resendInvitation = async (req, res) => {
   if (!user || user.isDisabled) {
     return res.sendStatus(404);
   }
-  const {
-    firstName,
-    lastName,
-    email: to,
-    emailToken
-  } = user;
-  let template;
-  if (emailTemplateId) {
-    template = await db.emailTemplates.getById(emailTemplateId, req.user.organisationId);
+  const emailUser = {
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    url: `https://${config.host}/invite/${userId}/${user.emailToken}`
   }
-  const { subject, plaintext, html } = makeInvitationEmail({
-    template,
-    userId,
-    firstName,
-    lastName,
-    emailToken
-  });
-  const result = await mailer.send({
-    to,
-    subject,
-    text: plaintext,
-    html
-  });
-  return res.json(result.rejected);
+  const rejected = await mailer.send('invite', [emailUser], emailTemplateId, organisationId);
+  return res.json(rejected);
 }
 
 const lostPassword = async (req, res) => {
-  const { email } = req.body;
-  const userId = await db.users.setEmailToken(email, uuid());
+  const { email, organisationId } = req.body;
+  const { id: userId, firstName } = await db.users.setEmailToken(email, uuid());
   const url = `https://${config.host}/lostpassword/${userId}/${emailToken}`;
-  const subject = 'Lost password';
-  const plaintext = `
-    Hi ${firstName}, 
-    Click this link to reset your password: ${url}`;
-  const html = `<p>${plaintext}</p>`;
-
-  await mailer.send({
-    to: email,
-    subject,
-    text: plaintext,
-    html
-  });
+  const emailUser = {
+    email,
+    firstName,
+    url
+  };
+  await mailer.send('lostPassword', [emailUser], null, organisationId);
   return res.sendStatus(200);
 }
 

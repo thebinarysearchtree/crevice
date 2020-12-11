@@ -146,7 +146,9 @@ const setEmailToken = async (email, emailToken, client = pool) => {
     where
       email = $1 and
       isDisabled is false
-    returning id`, [email, emailToken]);
+    returning 
+      id, 
+      firstName`, [email, emailToken]);
   return result.rows[0][0];
 }
 
