@@ -20,6 +20,7 @@ create table emailTemplates (
     slate json not null,
     html text not null,
     plaintext text not null,
+    isDefault boolean not null,
     organisationId integer not null references organisations on delete cascade
 );
 

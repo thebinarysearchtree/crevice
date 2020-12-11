@@ -14,5 +14,6 @@ module.exports = {
     username: '',
     password: '',
     from: ''
-  }
+  },
+  environment: 'test'
 };

@@ -24,7 +24,7 @@ const insert = async ({
   return result.rows[0][0];
 }
 
-const getById = async (templateId, organisationId, client = pool) => {
+const getById = async (templateId, type, organisationId, client = pool) => {
   const result = await client.query(`
     select
       subject,
@@ -33,7 +33,22 @@ const getById = async (templateId, organisationId, client = pool) => {
     from emailTemplates
     where 
       id = $1 and
-      organisationId = $2`, [templateId, organisationId]);
+      type = $2 and
+      organisationId = $3`, [templateId, type, organisationId]);
+  return result.rows[0];
+}
+
+const getDefaultTemplate = async (type, organisationId, client = pool) => {
+  const result = await client.query(`
+    select
+      subject,
+      html,
+      plaintext
+    from emailTemplates
+    where
+      type = $1 and
+      organisationId = $2 and
+      isDefault is true`, [type, organisationId]);
   return result.rows[0];
 }
 
@@ -67,6 +82,7 @@ const deleteById = async (templateId, organisationId, client = pool) => {
 module.exports = {
   insert,
   getById,
+  getDefaultTemplate,
   update,
   deleteById
 };

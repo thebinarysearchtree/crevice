@@ -243,6 +243,8 @@ const changePasswordWithToken = async (userId, emailToken, hash, client = pool) 
     update users
     set 
       password = $3,
+      emailToken = null,
+      emailTokenExpiry = null,
       isVerified = true
     where
       id = $1 and

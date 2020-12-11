@@ -1,13 +1,14 @@
 const mailer = require('nodemailer');
-const { email } = require('../../config');
+const { email, environment } = require('../../config');
 
-const send = async ({
-  to,
-  subject,
-  text,
-  html
-}) => {
-  const transport = mailer.createTransport({
+let transport;
+if (environment === 'test') {
+  transport = {
+    sendMail: (m) => console.log(m)
+  }
+}
+else {
+  transport = mailer.createTransport({
     host: email.host,
     port: email.port,
     secure: false,
@@ -16,6 +17,14 @@ const send = async ({
       pass: email.password
     }
   });
+}
+
+const send = async ({
+  to,
+  subject,
+  text,
+  html
+}) => {
   const message = {
     from: email.from,
     to,
