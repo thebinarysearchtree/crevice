@@ -72,7 +72,7 @@ const signUp = async (req, res) => {
 }
 
 const verify = async (req, res) => {
-  const [userId, emailToken] = req.path.slice(1).split('/');
+  const { userId, emailToken } = req.body;
   if (!userId || !emailToken) {
     return res.sendStatus(404);
   }
@@ -217,8 +217,8 @@ const checkEmailExists = async (req, res) => {
 const getToken = async (req, res) => {
   const {
     email,
-    password: suppliedPassword } = req.body;
-  const organisationId = req.baseUrl.slice(1);
+    password: suppliedPassword,
+    organisationId } = req.body;
   const client = await getPool().connect();
   try {
     await client.query('begin');
@@ -307,7 +307,21 @@ const update = async (req, res) => {
   return res.sendStatus(200);
 }
 
+const changeImage = async (req, res) => {
+  const userId = req.params.userId;
+  if (!req.user.isAdmin) {
+    const canChangeImage = req.user.roles.includes(r => r.canChangeImage);
+    if (!canChangeImage || userId !== req.user.id) {
+      return res.sendStatus(401);
+    }
+  }
+  await db.users.changeImage(userId, imageId, req.user.organisationId);
+}
+
 const deleteUser = async (req, res) => {
+  if (!req.user.isAdmin) {
+    return res.sendStatus(401);
+  }
   const { userId } = req.body;
   await db.users.deleteById(userId, req.user.organisationId);
   return res.sendStatus(200);
@@ -325,5 +339,6 @@ module.exports = {
   refreshToken,
   changePassword,
   update,
+  changeImage,
   deleteUser
 };

@@ -88,9 +88,10 @@ create index userRolesUserIdIndex on userRoles(userId);
 
 create table files (
     id uuid primary key,
-    name text not null,
+    filename text not null,
+    originalName text not null,
     sizeBytes integer not null,
-    fileType text not null,
+    mimeType text not null,
     uploadedBy integer references users on delete set null,
     uploadedAt timestamptz not null default now(),
     organisationId integer not null references organisations on delete cascade

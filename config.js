@@ -15,5 +15,9 @@ module.exports = {
     password: '',
     from: ''
   },
+  upload: {
+    filesDir: '/Users/andrew/Projects/crevice/files',
+    photosDir: '/Users/andrew/Projects/crevice/photos'
+  },
   environment: 'test'
 };

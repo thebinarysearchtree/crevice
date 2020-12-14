@@ -270,6 +270,28 @@ const update = async ({
     where id = $4`, [firstName, lastName, email, userId]);
 }
 
+const changeImage = async (userId, imageId, organisationId, client = pool) => {
+  await client.query(`
+    update users
+    set imageId = $2
+    where 
+      id = $1 and
+      organisationId = $3`, [userId, imageId, organisationId]);
+}
+
+const changeTag = async (userId, tagId, organisationId, client = pool) => {
+  await client.query(`
+    update users
+    set tagId = $2
+    where
+      id = $1 and
+      ($2 is null or exists(
+        select 1 from tags
+        where
+          id = $2 and
+          organisationId = $3))`, [userId, tagId, organisationId]);
+}
+
 const resetFailedPasswordAttempts = async (userId, client = pool) => {
   await client.query(`
     update users
