@@ -59,7 +59,7 @@ const insertMany = async (users, tagId, organisationId) => {
     };
   });
   let params = users
-    .map((u, i) => `($1, $2, $${i + 3}, $${i + 4}, $${i + 5}, $${i + 6}, $${i + 7}, $${i + 8}, $${i + 9}, $${i + 10})`)
+    .map((u, i) => `($1, $2, $${(i * 8) + 3}, $${(i * 8) + 4}, $${(i * 8) + 5}, $${(i * 8) + 6}, $${(i * 8) + 7}, $${(i * 8) + 8}, $${(i * 8) + 9}, $${(i * 8) + 10})`)
     .join(', ');
   const client = pool.connect();
   try {
@@ -277,6 +277,27 @@ const changeImage = async (userId, imageId, organisationId, client = pool) => {
     where 
       id = $1 and
       organisationId = $3`, [userId, imageId, organisationId]);
+}
+
+const updateImages = async (images, organisationId, client = pool) => {
+  const values = images
+    .map((f, i) => `(${(i * 2) + 2}, ${(i * 2) + 3})`)
+    .join(', ');
+  const params = images.flatMap(i => [i.email, i.imageId]);
+  const result = await client.query(`
+    update users
+    set imageId = i.imageId
+    from
+      (values ${values}) as i(email, imageId),
+      users u,
+      userOrganisations o
+    where
+      email = i.email and
+      u.email = i.email and
+      o.userId = u.id and
+      o.organisationId = $1
+    returning email`, [organisationId, ...params]);
+  return result.map(r => r.email);
 }
 
 const changeTag = async (userId, tagId, organisationId, client = pool) => {

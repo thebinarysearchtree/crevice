@@ -315,7 +315,22 @@ const changeImage = async (req, res) => {
       return res.sendStatus(401);
     }
   }
+  const imageId = req.files[0].fileId;
   await db.users.changeImage(userId, imageId, req.user.organisationId);
+}
+
+const uploadImages = async (req, res) => {
+  if (!req.user.isAdmin) {
+    return res.sendStatus(401);
+  }
+  const images = req.files.map(f => {
+    return {
+      email: f.originalName,
+      imageId: f.fileId
+    };
+  });
+  const accepted = await db.users.updateImages(images, req.user.organisationId);
+  return res.json(accepted);
 }
 
 const deleteUser = async (req, res) => {

@@ -1,25 +1,12 @@
-const formidable = require('formidable');
 const fs = require('fs').promises;
 const { upload: config } = require('../../config');
 const path = require('path');
 const uuid = require('uuid/v4');
 const sharp = require('sharp');
+const { parse, unzip } = require('./file');
 
-const form = formidable({ multiples: true });
-
-const getFiles = (req) => {
-  return new Promise((resolve, reject) => {
-    form.parse(req, (err, fields, files) => {
-      if (err) {
-        return reject(err);
-      }
-      resolve({ fields, files });
-    });
-  });
-}
-
-const files = async (req, res) => {
-  const { uploadedFiles } = await getFiles(req);
+const files = async (req, res, next) => {
+  const { uploadedFiles } = await parse(req);
   const storedFiles = [];
   for (const file of uploadedFiles) {
     const fileId = uuid();
@@ -35,13 +22,23 @@ const files = async (req, res) => {
     });
   }
   req.files = storedFiles;
+  return next();
 }
 
-const photos = async (req, res) => {
-  const { uploadedFiles } = await getFiles(req);
+const photos = async (req, res, next) => {
+  let { uploadedFiles } = await parse(req);
+  if (uploadedFiles.length === 1 && path.extname(uploadedFiles[0].name) === 'zip') {
+    uploadedFiles = await unzip(uploadedFiles[0].path);
+  }
   const storedFiles = [];
   for (const file of uploadedFiles) {
-    const photo = sharp(file.path);
+    let photo;
+    try {
+      photo = sharp(file.path);
+    }
+    catch (e) {
+      continue;
+    }
     const { width, height, format } = photo.metadata();
     const fileId = uuid();
     const filePath = `${config.photosDir}/${fileId}.jpg`;
@@ -61,12 +58,21 @@ const photos = async (req, res) => {
     if (format !== 'jpeg') {
       photo.toFormat('jpeg');
     }
-    await photo.toFile(filePath);
+    const result = await photo.toFile(filePath);
     await fs.unlink(file.path);
     storedFiles.push({
       fileId,
       filename: `${fileId}.jpg`,
-      originalName: file.name
+      originalName: file.name,
+      sizeBytes: result.size,
+      mimeType: 'image/jpeg'
     });
   }
+  req.files = storedFiles;
+  return next();
 }
+
+module.exports = {
+  files,
+  photos
+};
