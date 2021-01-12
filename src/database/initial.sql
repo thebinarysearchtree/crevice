@@ -7,9 +7,11 @@ create table organisations (
 
 create table tags (
     id serial primary key,
-    tag text not null,
+    name text not null,
+    description text,
+    colour text not null,
     organisationId integer not null references organisations on delete cascade,
-    unique(tag, organisationId)
+    unique(name, organisationId)
 );
 
 create table emailTemplates (
@@ -44,16 +46,24 @@ create table users (
     isDisabled boolean not null default false,
     isVerified boolean not null default false,
     failedPasswordAttempts integer not null default 0,
-    imageId uuid,
-    tagId integer references tags on delete set null
+    imageId uuid
 );
 
-create index usersTagIdIndex on users(tagId);
+create table userTags (
+    id serial primary key,
+    userId integer not null references users on delete cascade,
+    tagId integer not null references tags on delete cascade,
+    organisationId integer not null references organisations on delete cascade
+);
+
+create index userTagsUserIdIndex on userTags(userId);
+create index userTagsTagIdIndex on userTags(tagId);
 
 create table userOrganisations (
     id serial primary key,
     userId integer not null references users on delete cascade,
     organisationId integer not null references organisations on delete cascade,
+    isDefault boolean not null default true,
     unique(userId, organisationId)
 );
 

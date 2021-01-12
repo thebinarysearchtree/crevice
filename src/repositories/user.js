@@ -20,9 +20,8 @@ const insert = async ({
       password,
       refreshToken,
       emailToken,
-      isAdmin,
-      organisationId)
-    values($1, $2, $3, $4, $5, $6, $7, $8)
+      isAdmin)
+    values($1, $2, $3, $4, $5, $6, $7)
     returning id`, [
       firstName,
       lastName,
@@ -30,8 +29,7 @@ const insert = async ({
       password,
       refreshToken,
       emailToken,
-      isAdmin,
-      organisationId]);
+      isAdmin]);
   return result.rows[0].id;
 }
 
@@ -125,15 +123,18 @@ const checkEmailExists = async (email, client = pool) => {
 const getById = async (userId, organisationId, client = pool) => {
   const result = await client.query(`
     select
-      id,
-      firstName,
-      lastName,
-      email,
-      emailToken
-    from users
+      u.id,
+      u.firstName as "firstName",
+      u.lastName as "lastName",
+      u.email,
+      u.emailToken as "emailToken"
+    from 
+      users u,
+      userOrganisations o
     where
-      id = $1 and
-      organisationId = $2`, [userId, organisationId]);
+      u.id = $1 and
+      o.userId = u.id and
+      o.organisationId = $2`, [userId, organisationId]);
   return result.rows[0];
 }
 
@@ -221,23 +222,23 @@ const getByEmail = async (email, organisationId, client = pool) => {
     where
       u.email = $1 and
       u.id = o.userId and
-      o.organisationId = $2`, [email, organisationId]);
+      (($2 is null and o.isDefault) or o.organisationId = $2)`, [email, organisationId]);
   return result.rows[0];
 }
 
-const getRefreshToken = async (id, client = pool) => {
+const getRefreshToken = async (userId, client = pool) => {
   const result = await client.query(`
       select refreshToken as "refreshToken"
       from users
-      where id = $1`, [id]);
+      where id = $1`, [userId]);
   return result.rows[0].refreshToken;
 }
 
-const changePassword = async (hash, refreshToken, id, client = pool) => {
+const changePassword = async (hash, refreshToken, userId, client = pool) => {
   await client.query(`
     update users 
     set password = $1, refreshToken = $2 
-    where id = $3`, [hash, refreshToken, id]);
+    where id = $3`, [hash, refreshToken, userId]);
 }
 
 const changePasswordWithToken = async (userId, emailToken, hash, client = pool) => {
@@ -364,10 +365,10 @@ const verify = async (userId, emailToken, client = pool) => {
   return result.rowCount === 1;
 }
 
-const getPassword = async (id, client = pool) => {
+const getPassword = async (userId, client = pool) => {
   const result = await client.query(`
     select password from users 
-    where id = $1`, [id]);
+    where id = $1`, [userId]);
   return result.rows[0].password;
 }
 
@@ -375,8 +376,12 @@ const deleteById = async (userId, organisationId, client = pool) => {
   await client.query(`
     delete from users 
     where 
-      id = $1 and 
-      organisationId = $2 and
+      id = $1 and
+      exists(
+        select 1 from userOrganisations
+        where
+          userId = $1 and
+          organisationId = $2) and
       isAdmin is false`, [userId, organisationId]);
 }
 
@@ -392,6 +397,9 @@ module.exports = {
   changePassword,
   changePasswordWithToken,
   update,
+  changeImage,
+  updateImages,
+  changeTag,
   resetFailedPasswordAttempts,
   incrementFailedPasswordAttempts,
   disable,

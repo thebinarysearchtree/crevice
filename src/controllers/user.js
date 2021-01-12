@@ -1,7 +1,7 @@
 const getPool = require('../database/db');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const uuid = require('uuid/v4');
+const { v4: uuid } = require('uuid');
 const config = require('../../config');
 const userRepository = require('../repositories/user');
 const organisationRepository = require('../repositories/organisation');
@@ -17,12 +17,12 @@ const db = {
 
 const signUp = async (req, res) => {
   const {
+    organisationName,
     firstName,
     lastName,
     email,
-    organisationName,
     password } = req.body;
-  if (!firstName || !lastName || !email || !email.includes('@') || !password.length >= 6) {
+  if (!organisationName || !firstName || !lastName || !email || !email.includes('@') || !password.length >= 6) {
     return res.sendStatus(400);
   }
   const client = await getPool().connect();
@@ -45,8 +45,7 @@ const signUp = async (req, res) => {
       password: hash,
       refreshToken,
       emailToken,
-      isAdmin,
-      organisationId
+      isAdmin
     };
 
     const userId = await db.users.insert(user, client);
@@ -60,7 +59,10 @@ const signUp = async (req, res) => {
       url
     }], null, organisationId);
 
-    return res.json(rejected);
+    if (rejected.length === 0) {
+      return res.sendStatus(200);
+    }
+    return res.sendStatus(500);
   }
   catch (e) {
     await client.query('rollback');
@@ -217,12 +219,11 @@ const checkEmailExists = async (req, res) => {
 const getToken = async (req, res) => {
   const {
     email,
-    password: suppliedPassword,
-    organisationId } = req.body;
+    password: suppliedPassword } = req.body;
   const client = await getPool().connect();
   try {
     await client.query('begin');
-    const user = await db.users.getByEmail(email, organisationId, client);
+    const user = await db.users.getByEmail(email, null, client);
     if (!user || user.isDisabled || !user.isVerified) {
       await client.query('commit');
       return res.sendStatus(404);
@@ -355,5 +356,6 @@ module.exports = {
   changePassword,
   update,
   changeImage,
+  uploadImages,
   deleteUser
 };

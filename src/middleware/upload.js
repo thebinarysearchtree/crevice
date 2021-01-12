@@ -1,7 +1,7 @@
 const fs = require('fs').promises;
 const { upload: config } = require('../../config');
 const path = require('path');
-const uuid = require('uuid/v4');
+const { v4: uuid } = require('uuid');
 const sharp = require('sharp');
 const { parse, unzip } = require('./file');
 
