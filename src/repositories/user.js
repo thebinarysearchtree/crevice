@@ -33,8 +33,8 @@ const insert = async ({
   return result.rows[0].id;
 }
 
-const insertMany = async (users, tagId, organisationId) => {
-  let values = users.flatMap(u => {
+const insertUsers = async (users, client) => {
+  const values = users.flatMap(u => {
     const {
       firstName,
       lastName,
@@ -56,45 +56,124 @@ const insertMany = async (users, tagId, organisationId) => {
       imageId
     };
   });
-  let params = users
-    .map((u, i) => `($1, $2, $${(i * 8) + 3}, $${(i * 8) + 4}, $${(i * 8) + 5}, $${(i * 8) + 6}, $${(i * 8) + 7}, $${(i * 8) + 8}, $${(i * 8) + 9}, $${(i * 8) + 10})`)
+  const params = users
+    .map((u, i) => `($${(i * 8) + 1}, $${(i * 8) + 2}, $${(i * 8) + 3}, $${(i * 8) + 4}, $${(i * 8) + 5}, $${(i * 8) + 6}, $${(i * 8) + 7}, $${(i * 8) + 8})`)
     .join(', ');
-  const client = pool.connect();
-  try {
-    await client.query('begin');
-    const result = await client.query(`
-      insert into users(
-        organisationId,
-        tagId,
-        firstName,
-        lastName,
-        email,
-        password,
-        refreshToken,
-        emailToken,
-        isAdmin,
-        imageId)
-      values${params}
-      where ($2 is null or exists(
-        select 1 from tags
-        where
-          id = $2 and
-          organisationId = $1))
-      returning
-        id,
-        firstName,
-        lastName,
-        email,
-        emailToken`, [organisationId, tagId, ...values]);
-    let values = result.map(r => r.id);
-    let params = values.map((v, i) => `($1, $${i + 2})`).join(', ');
+  return await client.query(`
+    insert into users(
+      firstName,
+      lastName,
+      email,
+      password,
+      refreshToken,
+      emailToken,
+      isAdmin,
+      imageId)
+    values${params}
+    returning
+      id,
+      firstName,
+      lastName,
+      email,
+      emailToken`, values);
+}
+
+const insertUserOrganisations = async (userIds, organisationId, client) => {
+  const params = userIds.map((v, i) => `($1, $${i + 2})`).join(', ');
     await client.query(`
       insert into userOrganisations(
         organisationId,
         userId)
-      values${params}`, [organisationId, ...values]);
+      values${params}`, [organisationId, ...userIds]);
+}
+
+const validateTags = async (tagIds, organisationId, client) => {
+  const params = tagIds.map((t, i) => `${i + 2}`).join(', ');
+  const result = await client.query(`
+    select count(*)
+    from tags
+    where 
+      id in (${params}) and
+      organisationId = $1`, [organisationId, ...tagIds]);
+  return result[0][0] === tagIds.length;
+}
+
+const insertUserTags = async (userIds, tagIds, organisationId, client) => {
+  const userParams = userIds.map((v, i) => `($${i + 2})`).join(', ');
+  const tagParams = tagIds.map((t, i) => `($${i + userIds.length + 2})`).join(', ');
+  await client.query(`
+    insert into userTags(
+      userId,
+      tagId,
+      organisationId)
+    select 
+      u.id as userId,
+      t.id as tagId,
+      $1 as organisationId
+    from 
+      (values ${userParams}) as u(id),
+      (values ${tagParams}) as t(id)`, [organisationId, ...userIds, ...tagIds]);
+}
+
+const validateRoles = async (roleIds, organisationId, client) => {
+  const params = roleIds.map((r, i) => `${i + 2}`).join(', ');
+  const result = await client.query(`
+    select count(*)
+    from roles
+    where
+      id in (${params}) and
+      organisationId = $1`, [organisationId, ...roleIds]);
+  return result[0][0] === roles.length;
+}
+
+const insertUserRoles = async (userIds, roles, organisationId, client) => {
+  const userParams = userIds
+    .map((v, i) => `($${i + 2})`)
+    .join(', ');
+  const roleParams = roles
+    .map((r, i) => `(${i + userIds.length + 2}, ${i + userIds.length + 3})`)
+    .join(', ');
+  await client.query(`
+    insert into userRoles(
+      userId,
+      roleId,
+      isPrimary,
+      organisationId)
+    select
+      u.id as userId,
+      r.id as roleId,
+      r.isPrimary,
+      $1 as organisationId
+    from
+      (values ${userParams}) as u(id),
+      (values ${roleParams}) as r(id, isPrimary)`, [organisationId, ...userIds, ...roles.flatMap(r => [r.id, r.isPrimary])]);
+}
+
+const insertMany = async (users, tagIds, roles, organisationId) => {
+  if (roles.length === 0) {
+    throw Error();
+  }
+  const client = pool.connect();
+  try {
+    await client.query('begin');
+    const insertedUsers = await insertUsers(users, client);
+    const userIds = insertedUsers.map(r => r.id);
+    await insertUserOrganisations(userId, organisationId, client);
+    if (tagIds.length > 0) {
+      const tagsAreValid = await validateTags(tagIds, organisationId, client);
+      if (!tagsAreValid) {
+        throw Error();
+      }
+      await insertUserTags(userIds, tagIds, organisationId, client);
+    }
+    const roleIds = roles.map(r => r.id);
+    const rolesAreValid = await validateRoles(roleIds, organisationId, client);
+    if (!rolesAreValid) {
+      throw Error();
+    }
+    await insertUserRoles(userIds, roles, organisationId, client);
     await client.query('commit');
-    return result;
+    return insertedUsers;
   }
   catch (e) {
     await client.query('rollback');

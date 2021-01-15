@@ -91,6 +91,7 @@ create table userRoles (
     id serial primary key,
     userId integer not null references users on delete cascade,
     roleId integer not null references roles on delete cascade,
+    isPrimary boolean not null,
     organisationId integer not null references organisations on delete cascade
 );
 
