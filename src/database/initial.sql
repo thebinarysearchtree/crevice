@@ -70,6 +70,7 @@ create table userOrganisations (
 create table roles (
     id serial primary key,
     name text not null,
+    defaultView text not null,
     canBookBefore boolean not null,
     canBookAfter boolean not null,
     canCancelBefore boolean not null,

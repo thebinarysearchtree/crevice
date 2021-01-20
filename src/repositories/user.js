@@ -239,6 +239,8 @@ const getByEmail = async (email, organisationId, client = pool) => {
         $1 as "email",
         json_agg(json_build_object(
           'id', r.id,
+          'name', r.name,
+          'defaultView', r.defaultView,
           'canBookBefore', r.canBookBefore,
           'canBookAfter', r.canBookAfter,
           'canCancelBefore', r.canCancelBefore',
@@ -302,6 +304,16 @@ const getByEmail = async (email, organisationId, client = pool) => {
       u.email = $1 and
       u.id = o.userId and
       (($2 is null and o.isDefault) or o.organisationId = $2)`, [email, organisationId]);
+  return result.rows[0];
+}
+
+const getTasks = async (organisationId, client = pool) => {
+  const result = await client.query(`
+    select 
+      exists (select 1 from roles where organisationId = $1) as "needsRoles",
+      exists (select 1 from areas where organisationId = $1) as "needsAreas",
+      exists (select 1 from tags where organisationId = $1) as "needsTags",
+      exists (select 1 from userRoles where organisationId = $1) as "needsUsers";`, [organisationId]);
   return result.rows[0];
 }
 
@@ -472,6 +484,7 @@ module.exports = {
   getById,
   setEmailToken,
   getByEmail,
+  getTasks,
   getRefreshToken,
   changePassword,
   changePasswordWithToken,

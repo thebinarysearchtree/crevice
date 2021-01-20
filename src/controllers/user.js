@@ -219,7 +219,8 @@ const checkEmailExists = async (req, res) => {
 const getToken = async (req, res) => {
   const {
     email,
-    password: suppliedPassword } = req.body;
+    password: suppliedPassword,
+    organisationId } = req.body;
   const client = await getPool().connect();
   try {
     await client.query('begin');
@@ -240,7 +241,16 @@ const getToken = async (req, res) => {
         await client.query('commit');
       }
       const token = createToken(tokenData);
-      return res.json({ token });
+      let tasks;
+      if (user.isAdmin) {
+        tasks = await db.users.getTasks(organisationId, client);
+      }
+      const defaultView = user.roles.length > 0 ? user.roles.filter(r => r.isPrimary)[0].defaultView : '';
+      return res.json({ 
+        token,
+        tasks,
+        defaultView,
+        firstName: user.firstName });
     }
     else {
       await db.users.incrementFailedPasswordAttempts(user.id, client);
