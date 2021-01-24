@@ -250,7 +250,8 @@ const getToken = async (req, res) => {
         token,
         tasks,
         defaultView,
-        firstName: user.firstName });
+        firstName: user.firstName,
+        isAdmin: user.isAdmin });
     }
     else {
       await db.users.incrementFailedPasswordAttempts(user.id, client);

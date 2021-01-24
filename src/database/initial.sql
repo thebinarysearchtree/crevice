@@ -456,23 +456,43 @@ create table templateTimePeriods (
     areaId integer not null references areas on delete cascade,
     startTime timestamptz not null,
     endTime timestamptz not null,
-    capacity integer not null,
+    capacity integer,
     organisationId integer not null references organisations on delete cascade
 );
 
 create index templateTimePeriodsTemplateIdIndex on templateTimePeriods(templateId);
+
+create table templateTimePeriodRoles (
+    id serial primary key,
+    templateTimePeriodId integer not null references templateTimePeriods on delete cascade,
+    roleId integer not null references roles on delete cascade,
+    capacity integer not null,
+    organisationId integer not null references organisations on delete cascade
+);
+
+create index templateTimePeriodRolesTemplateTimePeriodIdIndex on templateTimePeriodRoles(templateTimePeriodId);
 
 create table timePeriods (
     id serial primary key,
     areaId integer not null references areas on delete cascade,
     startTime timestamptz not null,
     endTime timestamptz not null,
-    capacity integer not null,
+    capacity integer,
     templateId integer references templateApplications on delete set null,
     organisationId integer not null references organisations on delete cascade
 );
 
 create index timePeriodsIndex on timePeriods(areaId, startTime, endTime);
+
+create table timePeriodRoles (
+    id serial primary key,
+    timePeriodId integer not null references timePeriods on delete cascade,
+    roleId integer not null references roles on delete cascade,
+    capacity integer not null,
+    organisationId integer not null references organisations on delete cascade
+);
+
+create index timePeriodRolesTimePeriodIdIndex on timePeriodRoles(timePeriodId);
 
 create table questions (
     id serial primary key,
