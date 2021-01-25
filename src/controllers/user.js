@@ -100,12 +100,6 @@ const verify = async (req, res) => {
 }
 
 const inviteUsers = async (req, res) => {
-  if (!req.user.isAdmin) {
-    const canInvite = req.user.roles.includes(r => r.canInviteUsers);
-    if (!canInvite) {
-      return res.sendStatus(401);
-    }
-  }
   const { suppliedUsers, tagId, emailTemplateId } = req.body;
   const organisationId = req.user.organisationId;
   const isAdmin = false;
@@ -150,12 +144,6 @@ const inviteUsers = async (req, res) => {
 }
 
 const resendInvitation = async (req, res) => {
-  if (!req.user.isAdmin) {
-    const canInvite = req.user.roles.includes(r => r.canInviteUsers);
-    if (!canInvite) {
-      return res.sendStatus(401);
-    }
-  }
   const { userId, emailTemplateId } = req.body;
   const user = await db.users.getById(userId, req.user.organisationId);
   if (!user || user.isDisabled) {
@@ -321,20 +309,11 @@ const update = async (req, res) => {
 
 const changeImage = async (req, res) => {
   const userId = req.params.userId;
-  if (!req.user.isAdmin) {
-    const canChangeImage = req.user.roles.includes(r => r.canChangeImage);
-    if (!canChangeImage || userId !== req.user.id) {
-      return res.sendStatus(401);
-    }
-  }
   const imageId = req.files[0].fileId;
   await db.users.changeImage(userId, imageId, req.user.organisationId);
 }
 
 const uploadImages = async (req, res) => {
-  if (!req.user.isAdmin) {
-    return res.sendStatus(401);
-  }
   const images = req.files.map(f => {
     return {
       email: f.originalName,
@@ -346,9 +325,6 @@ const uploadImages = async (req, res) => {
 }
 
 const deleteUser = async (req, res) => {
-  if (!req.user.isAdmin) {
-    return res.sendStatus(401);
-  }
   const { userId } = req.body;
   await db.users.deleteById(userId, req.user.organisationId);
   return res.sendStatus(200);

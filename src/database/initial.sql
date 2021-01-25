@@ -83,6 +83,7 @@ create table roles (
     canChangeCapacity boolean not null,
     canAssignTasks boolean not null,
     canInviteUsers boolean not null,
+    createdAt timestamptz not null default now(),
     organisationId integer not null references organisations on delete cascade
 );
 

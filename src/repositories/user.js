@@ -9,8 +9,7 @@ const insert = async ({
   password,
   refreshToken,
   emailToken,
-  isAdmin,
-  organisationId
+  isAdmin
 }, client = pool) => {
   const result = await client.query(`
     insert into users(
@@ -30,7 +29,7 @@ const insert = async ({
       refreshToken,
       emailToken,
       isAdmin]);
-  return result.rows[0].id;
+  return result.rows[0][0];
 }
 
 const insertUsers = async (users, client) => {
@@ -319,10 +318,10 @@ const getTasks = async (organisationId, client = pool) => {
 
 const getRefreshToken = async (userId, client = pool) => {
   const result = await client.query(`
-      select refreshToken as "refreshToken"
+      select refreshToken
       from users
       where id = $1`, [userId]);
-  return result.rows[0].refreshToken;
+  return result.rows[0][0];
 }
 
 const changePassword = async (hash, refreshToken, userId, client = pool) => {
@@ -460,7 +459,7 @@ const getPassword = async (userId, client = pool) => {
   const result = await client.query(`
     select password from users 
     where id = $1`, [userId]);
-  return result.rows[0].password;
+  return result.rows[0][0];
 }
 
 const deleteById = async (userId, organisationId, client = pool) => {
