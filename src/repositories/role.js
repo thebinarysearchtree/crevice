@@ -156,6 +156,17 @@ const getById = async (roleId, organisationId, client = pool) => {
   return result.rows[0];
 }
 
+const getSelectListItems = async (organisationId, client = pool) => {
+  const result = await client.query(`
+    select 
+      id, 
+      name 
+    from roles 
+    where organisationId = $1
+    order by name desc`, [organisationId]);
+  return result.rows;
+}
+
 const find = async (organisationId, client = pool) => {
   const result = await client.query(`
     select
@@ -184,6 +195,7 @@ module.exports = {
   insert,
   update,
   getById,
+  getSelectListItems,
   find,
   remove
 };

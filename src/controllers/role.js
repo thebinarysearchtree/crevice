@@ -24,6 +24,11 @@ const getById = async (req, res) => {
   return res.json({ role });
 }
 
+const getSelectListItems = async (req, res) => {
+  const selectListItems = await db.roles.getSelectListItems(req.user.organisationId);
+  return res.json({ selectListItems });
+}
+
 const find = async (req, res) => {
   const roles = await db.roles.find(req.user.organisationId);
   return res.json({ roles });
@@ -38,6 +43,8 @@ const remove = async (req, res) => {
 module.exports = {
   insert,
   update,
+  getById,
+  getSelectListItems,
   find,
   remove
 };
