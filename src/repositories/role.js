@@ -9,8 +9,10 @@ const insert = async ({
   canBookAfter,
   canCancelBefore,
   canCancelAfter,
-  canBookForRoleId,
-  canCancelForRoleId,
+  canRequestCancellation,
+  canApproveCancellation,
+  canBookForOthers,
+  canCancelForOthers,
   canDelete,
   canEditBefore,
   canEditAfter,
@@ -26,8 +28,10 @@ const insert = async ({
       canBookAfter,
       canCancelBefore,
       canCancelAfter,
-      canBookForRoleId,
-      canCancelForRoleId,
+      canRequestCancellation,
+      canApproveCancellation,
+      canBookForOthers,
+      canCancelForOthers,
       canDelete,
       canEditBefore,
       canEditAfter,
@@ -35,18 +39,7 @@ const insert = async ({
       canAssignTasks,
       canInviteUsers,
       organisationId)
-    values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-    where
-      ($7 is null or exists(
-        select 1 from roles
-        where
-          id = $7 and
-          organisationId = $15)) and
-      ($8 is null or exists(
-        select 1 from roles
-        where
-          id = $8 and
-          organisationId = $15))
+    values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
     returning id`, [
       name,
       defaultView,
@@ -54,8 +47,10 @@ const insert = async ({
       canBookAfter,
       canCancelBefore,
       canCancelAfter,
-      canBookForRoleId,
-      canCancelForRoleId,
+      canRequestCancellation,
+      canApproveCancellation,
+      canBookForOthers,
+      canCancelForOthers,
       canDelete,
       canEditBefore,
       canEditAfter,
@@ -74,8 +69,10 @@ const update = async ({
   canBookAfter,
   canCancelBefore,
   canCancelAfter,
-  canBookForRoleId,
-  canCancelForRoleId,
+  canRequestCancellation,
+  canApproveCancellation,
+  canBookForOthers,
+  canCancelForOthers,
   canDelete,
   canEditBefore,
   canEditAfter,
@@ -92,43 +89,37 @@ const update = async ({
       canBookAfter = $5,
       canCancelBefore = $6,
       canCancelAfter = $7,
-      canBookForRoleId = $8,
-      canCancelForRoleId = $9,
-      canDelete = $10,
-      canEditBefore = $11,
-      canEditAfter = $12,
-      canChangeCapacity = $13,
-      canAssignTasks = $14,
-      canInviteUsers = $15
+      canRequestCancellation = $8,
+      canApproveCancellation = $9,
+      canBookForOthers = $10,
+      canCancelForOthers = $11,
+      canDelete = $12,
+      canEditBefore = $13,
+      canEditAfter = $14,
+      canChangeCapacity = $15,
+      canAssignTasks = $16,
+      canInviteUsers = $17
     where
       id = $1 and
-      organisationId = $16 and
-      ($8 is null or exists(
-        select 1 from roles
-        where
-          id = $8 and
-          organisationId = $16)) and
-      ($9 is null or exists(
-        select 1 from roles
-        where
-          id = $9 and
-          organisationId = $16))`, [
-            id,
-            name,
-            defaultView,
-            canBookBefore,
-            canBookAfter,
-            canCancelBefore,
-            canCancelAfter,
-            canBookForRoleId,
-            canCancelForRoleId,
-            canDelete,
-            canEditBefore,
-            canEditAfter,
-            canChangeCapacity,
-            canAssignTasks,
-            canInviteUsers,
-            organisationId]);
+      organisationId = $16`, [
+        id,
+        name,
+        defaultView,
+        canBookBefore,
+        canBookAfter,
+        canCancelBefore,
+        canCancelAfter,
+        canRequestCancellation,
+        canApproveCancellation,
+        canBookForOthers,
+        canCancelForOthers,
+        canDelete,
+        canEditBefore,
+        canEditAfter,
+        canChangeCapacity,
+        canAssignTasks,
+        canInviteUsers,
+        organisationId]);
 }
 
 const getById = async (roleId, organisationId, client = pool) => {
@@ -140,8 +131,10 @@ const getById = async (roleId, organisationId, client = pool) => {
       canBookAfter as "canBookAfter",
       canCancelBefore as "canCancelBefore",
       canCancelAfter as "canCancelAfter",
-      canBookForRoleId as "canBookForRoleId",
-      canCancelForRoleId as "canCancelForRoleId",
+      canRequestCancellation as "canRequestCancellation",
+      canApproveCancellation as "canApproveCancellation",
+      canBookForOthers as "canBookForOthers",
+      canCancelForOthers as "canCancelForOthers",
       canDelete as "canDelete",
       canEditBefore as "canEditBefore",
       canEditAfter as "canEditAfter",
