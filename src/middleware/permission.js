@@ -19,13 +19,6 @@ const rolePermission = (permission, additional) => {
   }
 }
 
-const invite = rolePermission(r => r.canInviteUsers);
-const changeImage = rolePermission(
-  r => r.canChangeImage, 
-  (req) => req.params.userId === req.user.id);
-
 module.exports = {
-  admin,
-  invite,
-  changeImage
+  admin
 };
