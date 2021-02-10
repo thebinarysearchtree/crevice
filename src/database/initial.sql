@@ -117,13 +117,27 @@ create table userFiles (
 
 create index userFilesUserIdIndex on userFiles(userId);
 
-create table areas (
+create table locations (
     id serial primary key,
     name text not null,
-    timezone text not null,
+    timeZone text not null,
+    address text,
+    createdAt timestamptz not null default now(),
     organisationId integer not null references organisations on delete cascade
 );
 
+create index locationsOrganisationIdIndex on locations(organisationId);
+
+create table areas (
+    id serial primary key,
+    name text not null,
+    locationId integer not null references locations on delete cascade,
+    notes text,
+    createdAt timestamptz not null default now(),
+    organisationId integer not null references organisations on delete cascade
+);
+
+create index areasLocationIdIndex on areas(locationId);
 create index areasOrganisationIdIndex on areas(organisationId);
 
 create table placementGroups (
@@ -221,7 +235,7 @@ create table userAreas (
     userId integer not null references users on delete cascade,
     areaId integer not null references areas on delete cascade,
     startTime timestamptz not null,
-    endTime timestamptz not null,
+    endTime timestamptz,
     roleId integer not null references roles on delete cascade,
     organisationId integer not null references organisations on delete cascade
 );
