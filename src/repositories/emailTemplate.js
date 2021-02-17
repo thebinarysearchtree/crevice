@@ -26,12 +26,12 @@ const insert = async ({
       type, 
       name, 
       subject, 
-      slate, 
+      JSON.stringify(slate), 
       html, 
       plaintext, 
       isDefault, 
       organisationId]);
-  return result.rows[0][0];
+  return result.rows[0].id;
 }
 
 const getById = async (templateId, type, organisationId, client = pool) => {

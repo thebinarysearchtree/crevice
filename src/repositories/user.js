@@ -29,7 +29,7 @@ const insert = async ({
       refreshToken,
       emailToken,
       isAdmin]);
-  return result.rows[0][0];
+  return result.rows[0].id;
 }
 
 const insertUsers = async (users, client) => {
@@ -89,12 +89,12 @@ const insertUserOrganisations = async (userIds, organisationId, client) => {
 const validateTags = async (tagIds, organisationId, client) => {
   const params = tagIds.map((t, i) => `${i + 2}`).join(', ');
   const result = await client.query(`
-    select count(*)
+    select count(*) as "validTags"
     from tags
     where 
       id in (${params}) and
       organisationId = $1`, [organisationId, ...tagIds]);
-  return result[0][0] === tagIds.length;
+  return result[0].validTags === tagIds.length;
 }
 
 const insertUserTags = async (userIds, tagIds, organisationId, client) => {
@@ -117,12 +117,12 @@ const insertUserTags = async (userIds, tagIds, organisationId, client) => {
 const validateRoles = async (roleIds, organisationId, client) => {
   const params = roleIds.map((r, i) => `${i + 2}`).join(', ');
   const result = await client.query(`
-    select count(*)
+    select count(*) as "validRoles"
     from roles
     where
       id in (${params}) and
       organisationId = $1`, [organisationId, ...roleIds]);
-  return result[0][0] === roles.length;
+  return result[0].validRoles === roles.length;
 }
 
 const insertUserRoles = async (userIds, roles, organisationId, client) => {
@@ -228,10 +228,10 @@ const setEmailToken = async (email, emailToken, client = pool) => {
     returning 
       id, 
       firstName`, [email, emailToken]);
-  return result.rows[0][0];
+  return result.rows[0];
 }
 
-const getByEmail = async (email, organisationId, client = pool) => {
+const getByEmail = async (email, client = pool) => {
   const result = await client.query(`
     with availableRoles as (
       select
@@ -240,18 +240,14 @@ const getByEmail = async (email, organisationId, client = pool) => {
           'id', r.id,
           'name', r.name,
           'defaultView', r.defaultView,
-          'canBookBefore', r.canBookBefore,
-          'canBookAfter', r.canBookAfter,
-          'canCancelBefore', r.canCancelBefore',
-          'canCancelAfter', r.canCancelAfter',
-          'canBookForRoleId', r.canBookForRoleId,
-          'canCancelForRoleId', r.canCancelForRoleId,
-          'canDelete', r.canDelete,
-          'canEditBefore', r.canEditBefore,
-          'canEditAfter', r.canEditAfter,
-          'canChangeCapacity', r.canChangeCapacity,
-          'canAssignTasks', r.canAssignTasks,
-          'canInviteUsers', r.canInviteUsers)) as "roles"
+          'canEditBookingBefore', r.canEditBookingBefore,
+          'canEditBookingAfter', r.canEditBookingAfter,
+          'canRequestEdit', r.canRequestEdit,
+          'canApproveEdit', r.canApproveEdit,
+          'canBookAndCancelForOthers', r.canBookAndCancelForOthers,
+          'canEditShift', r.canEditShift,
+          'canViewProfiles', r.canViewProfiles,
+          'canViewAnswers', r.canViewAnswers)) as "roles"
       from
         users u,
         userRoles ur,
@@ -273,11 +269,11 @@ const getByEmail = async (email, organisationId, client = pool) => {
         userAreas a
       where
         u.email = $1 and
-        a.userId = u.id),
+        a.userId = u.id)
     select 
       u.id,
       u.firstName as "firstName",
-      u.lastName as "lastName,
+      u.lastName as "lastName",
       u.email,
       u.password,
       u.refreshToken as "refreshToken",
@@ -293,35 +289,35 @@ const getByEmail = async (email, organisationId, client = pool) => {
         else a.areas end as "areas",
       o.organisationId as "organisationId"
     from 
-      users u,
-      userOrganisations o
+      users u join
+      userOrganisations o on u.id = o.userId
       left join
       availableRoles r on u.email = r.email
       left join
       availableAreas a on u.email = a.email
     where
       u.email = $1 and
-      u.id = o.userId and
-      (($2 is null and o.isDefault) or o.organisationId = $2)`, [email, organisationId]);
+      o.isDefault`, [email]);
   return result.rows[0];
 }
 
 const getTasks = async (organisationId, client = pool) => {
   const result = await client.query(`
     select 
-      exists (select 1 from roles where organisationId = $1) as "needsRoles",
-      exists (select 1 from areas where organisationId = $1) as "needsAreas",
-      exists (select 1 from tags where organisationId = $1) as "needsTags",
-      exists (select 1 from userRoles where organisationId = $1) as "needsUsers";`, [organisationId]);
+      not exists (select 1 from roles where organisationId = $1) as "needsRoles",
+      not exists (select 1 from locations where organisationId = $1) as "needsLocations",
+      not exists (select 1 from areas where organisationId = $1) as "needsAreas",
+      not exists (select 1 from tags where organisationId = $1) as "needsTags",
+      not exists (select 1 from userRoles where organisationId = $1) as "needsUsers";`, [organisationId]);
   return result.rows[0];
 }
 
 const getRefreshToken = async (userId, client = pool) => {
   const result = await client.query(`
-      select refreshToken
+      select refreshToken as "refreshToken"
       from users
       where id = $1`, [userId]);
-  return result.rows[0][0];
+  return result.rows[0].refreshToken;
 }
 
 const changePassword = async (hash, refreshToken, userId, client = pool) => {
@@ -459,7 +455,7 @@ const getPassword = async (userId, client = pool) => {
   const result = await client.query(`
     select password from users 
     where id = $1`, [userId]);
-  return result.rows[0][0];
+  return result.rows[0].password;
 }
 
 const deleteById = async (userId, organisationId, client = pool) => {

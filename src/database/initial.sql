@@ -120,6 +120,7 @@ create index userFilesUserIdIndex on userFiles(userId);
 create table locations (
     id serial primary key,
     name text not null,
+    abbreviation text not null,
     timeZone text not null,
     address text,
     createdAt timestamptz not null default now(),
@@ -131,6 +132,7 @@ create index locationsOrganisationIdIndex on locations(organisationId);
 create table areas (
     id serial primary key,
     name text not null,
+    abbreviation text not null,
     locationId integer not null references locations on delete cascade,
     notes text,
     createdAt timestamptz not null default now(),

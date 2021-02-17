@@ -38,8 +38,10 @@ const insert = async ({
       canApproveEdit,
       canBookAndCancelForOthers,
       canEditShift,
+      canViewProfiles,
+      canViewAnswers,
       organisationId]);
-  return result.rows[0][0];
+  return result.rows[0].id;
 }
 
 const update = async ({
@@ -55,7 +57,7 @@ const update = async ({
   canViewProfiles,
   canViewAnswers
 }, organisationId, client = pool) => {
-  const result = await client.query(`
+  await client.query(`
     update roles
     set
       name = $2,
@@ -80,6 +82,8 @@ const update = async ({
         canApproveEdit,
         canBookAndCancelForOthers,
         canEditShift,
+        canViewProfiles,
+        canViewAnswers,
         organisationId]);
 }
 
@@ -124,6 +128,8 @@ const find = async (organisationId, client = pool) => {
     from 
       roles r left join
       userRoles u on r.id = u.roleId
+    where
+      r.organisationId = $1
     group by
       r.name,
       r.createdAt,

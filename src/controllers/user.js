@@ -29,7 +29,7 @@ const signUp = async (req, res) => {
   try {
     await client.query('begin');
     const organisationId = await db.organisations.insert({
-      organisationName
+      name: organisationName
     }, client);
     await populate(organisationId, client);
     const isAdmin = true;
@@ -207,12 +207,11 @@ const checkEmailExists = async (req, res) => {
 const getToken = async (req, res) => {
   const {
     email,
-    password: suppliedPassword,
-    organisationId } = req.body;
+    password: suppliedPassword } = req.body;
   const client = await getPool().connect();
   try {
     await client.query('begin');
-    const user = await db.users.getByEmail(email, null, client);
+    const user = await db.users.getByEmail(email, client);
     if (!user || user.isDisabled || !user.isVerified) {
       await client.query('commit');
       return res.sendStatus(404);
@@ -231,9 +230,9 @@ const getToken = async (req, res) => {
       const token = createToken(tokenData);
       let tasks;
       if (user.isAdmin) {
-        tasks = await db.users.getTasks(organisationId, client);
+        tasks = await db.users.getTasks(user.organisationId, client);
       }
-      const defaultView = user.roles.length > 0 ? user.roles.filter(r => r.isPrimary)[0].defaultView : '';
+      const defaultView = user.roles && user.roles.length > 0 ? user.roles.filter(r => r.isPrimary)[0].defaultView : '';
       return res.json({ 
         token,
         tasks,
@@ -260,7 +259,7 @@ const refreshToken = async (req, res) => {
   const expiredToken = req.body.token;
   try {
     const data = jwt.verify(expiredToken, config.key, { ignoreExpiration: true });
-    const user = await db.users.getByEmail(data.email, data.organisationId);
+    const user = await db.users.getByEmail(data.email);
     if (!user || user.isDisabled || !user.isVerified) {
       return res.sendStatus(404);
     }
