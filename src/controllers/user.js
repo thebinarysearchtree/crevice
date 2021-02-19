@@ -227,7 +227,7 @@ const getToken = async (req, res) => {
         await db.users.resetFailedPasswordAttempts(user.id, client);
         await client.query('commit');
       }
-      const token = createToken(tokenData);
+      const { token, expiry } = createToken(tokenData);
       let tasks;
       if (user.isAdmin) {
         tasks = await db.users.getTasks(user.organisationId, client);
@@ -235,6 +235,7 @@ const getToken = async (req, res) => {
       const defaultView = user.roles && user.roles.length > 0 ? user.roles.filter(r => r.isPrimary)[0].defaultView : '';
       return res.json({ 
         token,
+        expiry,
         tasks,
         defaultView,
         firstName: user.firstName,
@@ -269,8 +270,19 @@ const refreshToken = async (req, res) => {
       isVerified,
       ...tokenData } = user;
     if (data.refreshToken === user.refreshToken) {
-      const token = createToken(tokenData);
-      return res.json({ token });
+      const { token, expiry } = createToken(tokenData);
+      let tasks;
+      if (user.isAdmin) {
+        tasks = await db.users.getTasks(user.organisationId);
+      }
+      const defaultView = user.roles && user.roles.length > 0 ? user.roles.filter(r => r.isPrimary)[0].defaultView : '';
+      return res.json({ 
+        token,
+        expiry,
+        tasks,
+        defaultView,
+        firstName: user.firstName,
+        isAdmin: user.isAdmin });
     }
     return res.sendStatus(404);
   }
@@ -280,7 +292,9 @@ const refreshToken = async (req, res) => {
 }
 
 const createToken = (tokenData) => {
-  return jwt.sign(tokenData, config.key, { expiresIn: '15 minutes' });
+  const token = jwt.sign(tokenData, config.key, { expiresIn: '30 minutes' });
+  const expiry = Date.now() + (1000 * 60 * 30);
+  return { token, expiry };
 }
 
 const changePassword = async (req, res) => {
@@ -295,7 +309,7 @@ const changePassword = async (req, res) => {
     req.user.refreshToken = refreshToken;
     const token = createToken(req.user);
 
-    return res.json({ token });
+    return res.json(token);
   }
   return res.sendStatus(401);
 }
