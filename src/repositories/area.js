@@ -15,12 +15,12 @@ const insert = async ({
       locationId,
       notes,
       organisationId)
-    values($1, $2, $3, $4, $5)
+    select $1, $2, $3, $4, $5
     where exists(
       select 1 from locations
       where
         id = $3 and
-        organisationId = $5))
+        organisationId = $5)
     returning id`, [
       name,
       abbreviation,
@@ -89,10 +89,11 @@ const getSelectListItems = async (organisationId, client = pool) => {
 const find = async (organisationId, client = pool) => {
   const result = await client.query(`
     select
+      a.id,
       a.name,
       a.abbreviation,
       a.locationId as "locationId",
-      l.name as "locationName",
+      l.abbreviation as "locationName",
       a.notes,
       a.createdAt as "createdAt",
       sum(case when u.userId is null then 0 else 1 end) as "activeUserCount"
@@ -105,10 +106,11 @@ const find = async (organisationId, client = pool) => {
     where
       a.organisationId = $1
     group by
+      a.id,
       a.name,
       a.abbreviation,
       a.locationId,
-      l.name,
+      l.abbreviation,
       a.notes,
       a.createdAt,
       u.userId`, [organisationId]);

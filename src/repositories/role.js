@@ -22,13 +22,12 @@ const insert = async ({
       canEditBookingAfter,
       canRequestEdit,
       canApproveEdit,
-      canBookForOthers,
       canBookAndCancelForOthers,
       canEditShift,
       canViewProfiles,
       canViewAnswers,
       organisationId)
-    values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+    values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
     returning id`, [
       name,
       defaultView,
@@ -69,7 +68,7 @@ const update = async ({
       canBookAndCancelForOthers = $8,
       canEditShift = $9,
       canViewProfiles = $10,
-      vanViewAnswers = $11
+      canViewAnswers = $11
     where
       id = $1 and
       organisationId = $12`, [
@@ -122,6 +121,7 @@ const getSelectListItems = async (organisationId, client = pool) => {
 const find = async (organisationId, client = pool) => {
   const result = await client.query(`
     select
+      r.id,
       r.name,
       r.createdAt as "createdAt",
       sum(case when u.userId is null then 0 else 1 end) as "userCount"
@@ -131,6 +131,7 @@ const find = async (organisationId, client = pool) => {
     where
       r.organisationId = $1
     group by
+      r.id,
       r.name,
       r.createdAt,
       u.userId`, [organisationId]);

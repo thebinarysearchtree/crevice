@@ -228,15 +228,10 @@ const getToken = async (req, res) => {
         await client.query('commit');
       }
       const { token, expiry } = createToken(tokenData);
-      let tasks;
-      if (user.isAdmin) {
-        tasks = await db.users.getTasks(user.organisationId, client);
-      }
       const defaultView = user.roles && user.roles.length > 0 ? user.roles.filter(r => r.isPrimary)[0].defaultView : '';
       return res.json({ 
         token,
         expiry,
-        tasks,
         defaultView,
         firstName: user.firstName,
         isAdmin: user.isAdmin });
@@ -271,15 +266,10 @@ const refreshToken = async (req, res) => {
       ...tokenData } = user;
     if (data.refreshToken === user.refreshToken) {
       const { token, expiry } = createToken(tokenData);
-      let tasks;
-      if (user.isAdmin) {
-        tasks = await db.users.getTasks(user.organisationId);
-      }
       const defaultView = user.roles && user.roles.length > 0 ? user.roles.filter(r => r.isPrimary)[0].defaultView : '';
       return res.json({ 
         token,
         expiry,
-        tasks,
         defaultView,
         firstName: user.firstName,
         isAdmin: user.isAdmin });

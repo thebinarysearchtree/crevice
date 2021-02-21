@@ -68,8 +68,8 @@ const getById = async (locationId, organisationId, client = pool) => {
 const getSelectListItems = async (organisationId, client = pool) => {
   const result = await client.query(`
     select 
-      id, 
-      abbreviation 
+      id,
+      abbreviation as "name"
     from locations 
     where organisationId = $1
     order by abbreviation desc`, [organisationId]);
