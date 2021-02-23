@@ -113,7 +113,10 @@ const find = async (organisationId, client = pool) => {
       l.abbreviation,
       a.notes,
       a.createdAt,
-      u.userId`, [organisationId]);
+      u.userId
+    order by
+      l.abbreviation asc,
+      a.abbreviation asc`, [organisationId]);
   return result.rows;
 }
 

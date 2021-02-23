@@ -72,13 +72,14 @@ const getSelectListItems = async (organisationId, client = pool) => {
       abbreviation as "name"
     from locations 
     where organisationId = $1
-    order by abbreviation desc`, [organisationId]);
+    order by abbreviation asc`, [organisationId]);
   return result.rows;
 }
 
 const find = async (organisationId, client = pool) => {
   const result = await client.query(`
     select
+      l.id,
       l.name,
       l.abbreviation,
       l.timeZone as "timeZone",
@@ -91,6 +92,7 @@ const find = async (organisationId, client = pool) => {
     where
       l.organisationId = $1
     group by
+      l.id,
       l.name,
       l.abbreviation,
       l.timeZone,
