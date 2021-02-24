@@ -19,7 +19,7 @@ router.post('/resendInvitation', [auth, admin], wrap(userController.resendInvita
 router.post('/checkeEmailExists', auth, wrap(userController.checkEmailExists));
 router.post('/changePassword', auth, wrap(userController.changePassword));
 router.post('/update', auth, wrap(userController.update));
-router.post('/deleteUser', [auth, admin], wrap(userController.deleteUser));
+router.post('/remove', [auth, admin], wrap(userController.remove));
 
 router.post('/changeImage', [auth, admin, photos], wrap(userController.changeImage));
 router.post('/uploadImages', [auth, admin, photos], wrap(userController.uploadImages));

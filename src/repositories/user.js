@@ -261,15 +261,15 @@ const getByEmail = async (email, client = pool) => {
         $1 as "email",
         json_agg(json_build_object(
           'id', a.areaId,
-          'startTime', a.startTime,
-          'endTime', a.endTime,
           'roleId', a.roleId)) as "areas"
       from
         users u,
         userAreas a
       where
         u.email = $1 and
-        a.userId = u.id)
+        a.userId = u.id and
+        a.startTime <= now() and
+        (a.endTime is null or a.endTime > now()))
     select 
       u.id,
       u.firstName as "firstName",

@@ -327,7 +327,7 @@ const uploadImages = async (req, res) => {
   return res.json(accepted);
 }
 
-const deleteUser = async (req, res) => {
+const remove = async (req, res) => {
   const { userId } = req.body;
   await db.users.deleteById(userId, req.user.organisationId);
   return res.sendStatus(200);
@@ -347,5 +347,5 @@ module.exports = {
   update,
   changeImage,
   uploadImages,
-  deleteUser
+  remove
 };
