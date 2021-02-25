@@ -17,9 +17,9 @@ create table tags (
 create table email_templates (
     id serial primary key,
     type text not null check (type in (
-        'signup',
-        'invite',
-        'lost_password'
+        'SignUp',
+        'Invite',
+        'LostPassword'
     )),
     name text not null,
     subject text not null,
@@ -186,12 +186,12 @@ create table fields (
     group_id integer references field_groups on delete cascade,
     label text not null,
     field_type text not null check (field_type in (
-        'small_text',
-        'text',
-        'textarea',
-        'select',
-        'date',
-        'numeric'
+        'SmallText',
+        'Text',
+        'Textarea',
+        'Select',
+        'Date',
+        'Numeric'
     )),
     organisation_id integer not null references organisations on delete cascade
 );
@@ -511,10 +511,10 @@ create table questions (
     id serial primary key,
     group_id integer not null references question_groups on delete cascade,
     question_type text not null check (question_type in (
-        '_multiple-choice',
-        '_comment',
-        '_scale',
-        '_numeric')),
+        'MultipleChoice',
+        'Comment',
+        'Scale',
+        'Numeric')),
     question_order integer not null,
     question text not null,
     organisation_id integer not null references organisations on delete cascade

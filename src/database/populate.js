@@ -6,21 +6,21 @@ const db = {
 
 const defaultTemplates = [
   {
-    type: 'signup',
+    type: 'SignUp',
     subject: 'Welcome to Crevice',
     plaintext: `
       Hi {firstName}, 
       Click this link to finish the signup process: {url}`
   },
   {
-    type: 'invite',
+    type: 'Invite',
     subject: 'Welcome to Crevice',
     plaintext: `
       Hi {firstName}, you have been invited to join Crevice. 
       Click this link to finish the process: {url}`
   },
   {
-    type: 'lostPassword',
+    type: 'LostPassword',
     subject: 'Reset your password',
     plaintext: `
       Hi {firstName}, 

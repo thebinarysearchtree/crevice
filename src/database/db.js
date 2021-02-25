@@ -1,5 +1,16 @@
-const { Pool } = require('pg');
+const pg = require('pg');
+const { Pool } = pg;
 const { database: config } = require('../../config');
+
+const handleRowDescription = pg.Query.prototype.handleRowDescription;
+
+pg.Query.prototype.handleRowDescription = function(msg) {
+  msg.fields.forEach(field => {
+    const name = field.name.replace(/_[a-z]/g, (s) => s.substring(1).toUpperCase());
+    field.name = name;
+  });
+  return handleRowDescription.call(this, msg);
+}
 
 let pool = null;
 
