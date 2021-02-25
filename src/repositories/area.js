@@ -12,15 +12,15 @@ const insert = async ({
     insert into areas(
       name,
       abbreviation,
-      locationId,
+      location_id,
       notes,
-      organisationId)
+      organisation_id)
     select $1, $2, $3, $4, $5
     where exists(
       select 1 from locations
       where
         id = $3 and
-        organisationId = $5)
+        organisation_id = $5)
     returning id`, [
       name,
       abbreviation,
@@ -42,16 +42,16 @@ const update = async ({
     set
       name = $2,
       abbreviation = $3,
-      locationId = $4,
+      location_id = $4,
       notes = $5
     where
       id = $1 and
-      organisationId = $6 and
+      organisation_id = $6 and
       exists(
         select 1 from locations
         where
           id = $4 and
-          organisationId = $6))`, [
+          organisation_id = $6))`, [
         id,
         name,
         abbreviation,
@@ -62,16 +62,10 @@ const update = async ({
 
 const getById = async (areaId, organisationId, client = pool) => {
   const result = await client.query(`
-    select
-      name,
-      abbreviation,
-      locationId as "locationId",
-      notes,
-      createdAt as "createdAt"
-    from areas
+    select * from areas
     where 
       id = $1 and 
-      organisationId = $2`, [areaId, organisationId]);
+      organisation_id = $2`, [areaId, organisationId]);
   return result.rows[0];
 }
 
@@ -81,7 +75,7 @@ const getSelectListItems = async (organisationId, client = pool) => {
       id, 
       abbreviation 
     from areas 
-    where organisationId = $1
+    where organisation_id = $1
     order by abbreviation desc`, [organisationId]);
   return result.rows;
 }
@@ -89,31 +83,21 @@ const getSelectListItems = async (organisationId, client = pool) => {
 const find = async (organisationId, client = pool) => {
   const result = await client.query(`
     select
-      a.id,
-      a.name,
-      a.abbreviation,
-      a.locationId as "locationId",
-      l.abbreviation as "locationName",
-      a.notes,
-      a.createdAt as "createdAt",
-      sum(case when u.userId is null then 0 else 1 end) as "activeUserCount"
+      a.*,
+      l.abbreviation as location_name,
+      sum(case when u.user_id is null then 0 else 1 end) as "active_user_count"
     from 
       areas a join
-      locations l on l.id = a.locationId left join
-      userAreas u on a.id = u.areaId and 
-      u.startTime <= now() and
-      (u.endTime is null or u.endTime >= now())
+      locations l on l.id = a.location_id left join
+      user_areas u on a.id = u.area_id and 
+      u.start_time <= now() and
+      (u.end_time is null or u.end_time >= now())
     where
-      a.organisationId = $1
+      a.organisation_id = $1
     group by
       a.id,
-      a.name,
-      a.abbreviation,
-      a.locationId,
       l.abbreviation,
-      a.notes,
-      a.createdAt,
-      u.userId
+      u.user_id
     order by
       l.abbreviation asc,
       a.abbreviation asc`, [organisationId]);
@@ -125,7 +109,7 @@ const remove = async (areaId, organisationId, client = pool) => {
     delete from areas
     where
       id = $1 and
-      organisationId = $2`, [areaId, organisationId]);
+      organisation_id = $2`, [areaId, organisationId]);
 }
 
 module.exports = {

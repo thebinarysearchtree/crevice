@@ -12,9 +12,9 @@ const insert = async ({
     insert into locations(
       name,
       abbreviation,
-      timeZone,
+      time_zone,
       address,
-      organisationId)
+      organisation_id)
     values($1, $2, $3, $4, $5)
     returning id`, [
       name,
@@ -37,11 +37,11 @@ const update = async ({
     set
       name = $2,
       abbreviation = $3,
-      timeZone = $4,
+      time_zone = $4,
       address = $5
     where
       id = $1 and
-      organisationId = $6`, [
+      organisation_id = $6`, [
         id,
         name,
         abbreviation,
@@ -52,16 +52,10 @@ const update = async ({
 
 const getById = async (locationId, organisationId, client = pool) => {
   const result = await client.query(`
-    select
-      name,
-      abbreviation,
-      timeZone as "timeZone",
-      address,
-      createdAt as "createdAt"
-    from locations
+    select * from locations
     where 
       id = $1 and 
-      organisationId = $2`, [locationId, organisationId]);
+      organisation_id = $2`, [locationId, organisationId]);
   return result.rows[0];
 }
 
@@ -69,9 +63,9 @@ const getSelectListItems = async (organisationId, client = pool) => {
   const result = await client.query(`
     select 
       id,
-      abbreviation as "name"
+      abbreviation as name
     from locations 
-    where organisationId = $1
+    where organisation_id = $1
     order by abbreviation asc`, [organisationId]);
   return result.rows;
 }
@@ -79,25 +73,14 @@ const getSelectListItems = async (organisationId, client = pool) => {
 const find = async (organisationId, client = pool) => {
   const result = await client.query(`
     select
-      l.id,
-      l.name,
-      l.abbreviation,
-      l.timeZone as "timeZone",
-      l.address,
-      l.createdAt as "createdAt",
-      sum(case when a.id is null then 0 else 1 end) as "areaCount"
+      l.*,
+      sum(case when a.id is null then 0 else 1 end) as area_count
     from 
       locations l left join
-      areas a on l.id = a.locationId
+      areas a on l.id = a.location_id
     where
-      l.organisationId = $1
+      l.organisation_id = $1
     group by
-      l.id,
-      l.name,
-      l.abbreviation,
-      l.timeZone,
-      l.address,
-      l.createdAt,
       l.id`, [organisationId]);
   return result.rows;
 }
@@ -107,7 +90,7 @@ const remove = async (locationId, organisationId, client = pool) => {
     delete from locations
     where
       id = $1 and
-      organisationId = $2`, [locationId, organisationId]);
+      organisation_id = $2`, [locationId, organisationId]);
 }
 
 module.exports = {

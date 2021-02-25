@@ -12,15 +12,15 @@ const insert = async ({
   isDefault = false
 }, organisationId, client = pool) => {
   const result = await client.query(`
-    insert into emailTemplates(
+    insert into email_templates(
       type,
       name,
       subject,
       slate,
       html,
       plaintext,
-      isDefault,
-      organisationId)
+      is_default,
+      organisation_id)
     values($1, $2, $3, $4, $5, $6, $7, $8)
     returning id`, [
       type, 
@@ -40,11 +40,11 @@ const getById = async (templateId, type, organisationId, client = pool) => {
       subject,
       html,
       plaintext
-    from emailTemplates
+    from email_templates
     where 
       id = $1 and
       type = $2 and
-      organisationId = $3`, [templateId, type, organisationId]);
+      organisation_id = $3`, [templateId, type, organisationId]);
   return result.rows[0];
 }
 
@@ -54,11 +54,11 @@ const getDefaultTemplate = async (type, organisationId, client = pool) => {
       subject,
       html,
       plaintext
-    from emailTemplates
+    from email_templates
     where
       type = $1 and
-      organisationId = $2 and
-      isDefault is true`, [type, organisationId]);
+      organisation_id = $2 and
+      is_default is true`, [type, organisationId]);
   return result.rows[0];
 }
 
@@ -70,7 +70,7 @@ const update = async ({
   plaintext
 }, organisationId, client = pool) => {
   await client.query(`
-    update emailTemplates
+    update email_templates
     set
       subject = $2,
       slate = $3,
@@ -78,15 +78,15 @@ const update = async ({
       plaintext = $5
     where
       id = $1 and
-      organisationId = $6`, [templateId, subject, slate, html, plaintext, organisationId]);
+      organisation_id = $6`, [templateId, subject, slate, html, plaintext, organisationId]);
 }
 
 const deleteById = async (templateId, organisationId, client = pool) => {
   await client.query(`
-    delete from emailTemplates
+    delete from email_templates
     where
       id = $1 and
-      organisationId = $2`, [templateId, organisationId]);
+      organisation_id = $2`, [templateId, organisationId]);
 }
 
 module.exports = {

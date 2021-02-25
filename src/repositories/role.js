@@ -17,16 +17,16 @@ const insert = async ({
   const result = await client.query(`
     insert into roles(
       name,
-      defaultView,
-      canEditBookingBefore,
-      canEditBookingAfter,
-      canRequestEdit,
-      canApproveEdit,
-      canBookAndCancelForOthers,
-      canEditShift,
-      canViewProfiles,
-      canViewAnswers,
-      organisationId)
+      default_view,
+      can_edit_booking_before,
+      can_edit_booking_after,
+      can_request_edit,
+      can_approve_edit,
+      can_book_and_cancel_for_others,
+      can_edit_shift,
+      can_view_profiles,
+      can_view_answers,
+      organisation_id)
     values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
     returning id`, [
       name,
@@ -60,18 +60,18 @@ const update = async ({
     update roles
     set
       name = $2,
-      defaultView = $3,
-      canEditBookingBefore = $4,
-      canEditBookingAfter = $5,
-      canRequestEdit = $6,
-      canApproveEdit = $7,
-      canBookAndCancelForOthers = $8,
-      canEditShift = $9,
-      canViewProfiles = $10,
-      canViewAnswers = $11
+      default_view = $3,
+      can_edit_booking_before = $4,
+      can_edit_booking_after = $5,
+      can_request_edit = $6,
+      can_approve_edit = $7,
+      can_book_and_cancel_for_others = $8,
+      can_edit_shift = $9,
+      can_view_profiles = $10,
+      can_view_answers = $11
     where
       id = $1 and
-      organisationId = $12`, [
+      organisation_id = $12`, [
         roleId,
         name,
         defaultView,
@@ -88,22 +88,10 @@ const update = async ({
 
 const getById = async (roleId, organisationId, client = pool) => {
   const result = await client.query(`
-    select
-      name,
-      defaultView as "defaultView",
-      canEditBookingBefore as "canEditBookingBefore",
-      canEditBookingAfter as "canEditBookingAfter",
-      canRequestEdit as "canRequestEdit",
-      canApproveEdit as "canApproveEdit",
-      canBookAndCancelForOthers as "canBookAndCancelForOthers",
-      canEditShift as "canEditShift",
-      canViewProfiles as "canViewProfiles",
-      canViewAnswers as "canViewAnswers",
-      createdAt as "createdAt"
-    from roles
+    select * from roles
     where 
       id = $1 and 
-      organisationId = $2`, [roleId, organisationId]);
+      organisation_id = $2`, [roleId, organisationId]);
   return result.rows[0];
 }
 
@@ -113,7 +101,7 @@ const getSelectListItems = async (organisationId, client = pool) => {
       id, 
       name 
     from roles 
-    where organisationId = $1
+    where organisation_id = $1
     order by name desc`, [organisationId]);
   return result.rows;
 }
@@ -123,18 +111,16 @@ const find = async (organisationId, client = pool) => {
     select
       r.id,
       r.name,
-      r.createdAt as "createdAt",
-      sum(case when u.userId is null then 0 else 1 end) as "userCount"
+      r.created_at as created_at,
+      sum(case when u.user_id is null then 0 else 1 end) as "user_count"
     from 
       roles r left join
-      userRoles u on r.id = u.roleId
+      user_roles u on r.id = u.role_id
     where
-      r.organisationId = $1
+      r.organisation_id = $1
     group by
       r.id,
-      r.name,
-      r.createdAt,
-      u.userId`, [organisationId]);
+      u.user_id`, [organisationId]);
   return result.rows;
 }
 
@@ -143,7 +129,7 @@ const remove = async (roleId, organisationId, client = pool) => {
     delete from roles
     where
       id = $1 and
-      organisationId = $2`, [roleId, organisationId]);
+      organisation_id = $2`, [roleId, organisationId]);
 }
 
 module.exports = {

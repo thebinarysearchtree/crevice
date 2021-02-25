@@ -28,7 +28,7 @@ const update = async ({
     update organisations
     set 
       name = $1,
-      logoImageId = $2
+      logo_image_id = $2
     where id = $3`, [
       name,
       logoImageId,

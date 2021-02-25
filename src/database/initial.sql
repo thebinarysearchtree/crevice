@@ -1,8 +1,8 @@
 create table organisations (
     id serial primary key,
     name text not null,
-    createdAt timestamptz not null default now(),
-    logoImageId uuid
+    created_at timestamptz not null default now(),
+    logo_image_id uuid
 );
 
 create table tags (
@@ -10,546 +10,546 @@ create table tags (
     name text not null,
     description text,
     colour text not null,
-    organisationId integer not null references organisations on delete cascade,
-    unique(name, organisationId)
+    organisation_id integer not null references organisations on delete cascade,
+    unique(name, organisation_id)
 );
 
-create table emailTemplates (
+create table email_templates (
     id serial primary key,
     type text not null check (type in (
         'signup',
         'invite',
-        'lostPassword'
+        'lost_password'
     )),
     name text not null,
     subject text not null,
     slate json not null,
     html text not null,
     plaintext text not null,
-    isDefault boolean not null,
-    organisationId integer not null references organisations on delete cascade
+    is_default boolean not null,
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index emailTemplatesOrganisationIdIndex on emailTemplates(organisationId);
+create index email_templates_organisation_id_index on email_templates(organisation_id);
 
 create table users (
     id serial primary key,
-    firstName text not null,
-    lastName text not null,
+    first_name text not null,
+    last_name text not null,
     email text not null unique,
     password text not null,
-    refreshToken uuid not null,
-    emailToken uuid,
-    emailTokenExpiry timestamptz default now() + interval '7 days',
-    createdAt timestamptz not null default now(),
-    isAdmin boolean not null,
-    isDisabled boolean not null default false,
-    isVerified boolean not null default false,
-    failedPasswordAttempts integer not null default 0,
-    imageId uuid
+    refresh_token uuid not null,
+    email_token uuid,
+    email_token_expiry timestamptz default now() + interval '7 days',
+    created_at timestamptz not null default now(),
+    is_admin boolean not null,
+    is_disabled boolean not null default false,
+    is_verified boolean not null default false,
+    failed_password_attempts integer not null default 0,
+    image_id uuid
 );
 
-create table userTags (
+create table user_tags (
     id serial primary key,
-    userId integer not null references users on delete cascade,
-    tagId integer not null references tags on delete cascade,
-    organisationId integer not null references organisations on delete cascade
+    user_id integer not null references users on delete cascade,
+    tag_id integer not null references tags on delete cascade,
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index userTagsUserIdIndex on userTags(userId);
-create index userTagsTagIdIndex on userTags(tagId);
+create index user_tags_user_id_index on user_tags(user_id);
+create index user_tags_tag_id_index on user_tags(tag_id);
 
-create table userOrganisations (
+create table user_organisations (
     id serial primary key,
-    userId integer not null references users on delete cascade,
-    organisationId integer not null references organisations on delete cascade,
-    isDefault boolean not null default true,
-    unique(userId, organisationId)
+    user_id integer not null references users on delete cascade,
+    organisation_id integer not null references organisations on delete cascade,
+    is_default boolean not null default true,
+    unique(user_id, organisation_id)
 );
 
 create table roles (
     id serial primary key,
     name text not null,
-    defaultView text not null,
-    canEditBookingBefore boolean not null,
-    canEditBookingAfter boolean not null,
-    canRequestEdit boolean not null,
-    canApproveEdit boolean not null,
-    canBookAndCancelForOthers boolean not null,
-    canEditShift boolean not null,
-    canViewProfiles boolean not null,
-    canViewAnswers boolean not null,
-    createdAt timestamptz not null default now(),
-    organisationId integer not null references organisations on delete cascade
+    default_view text not null,
+    can_edit_booking_before boolean not null,
+    can_edit_booking_after boolean not null,
+    can_request_edit boolean not null,
+    can_approve_edit boolean not null,
+    can_book_and_cancel_for_others boolean not null,
+    can_edit_shift boolean not null,
+    can_view_profiles boolean not null,
+    can_view_answers boolean not null,
+    created_at timestamptz not null default now(),
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index rolesOrganisationIdIndex on roles(organisationId);
+create index roles_organisation_id_index on roles(organisation_id);
 
-create table userRoles (
+create table user_roles (
     id serial primary key,
-    userId integer not null references users on delete cascade,
-    roleId integer not null references roles on delete cascade,
-    isPrimary boolean not null,
-    organisationId integer not null references organisations on delete cascade
+    user_id integer not null references users on delete cascade,
+    role_id integer not null references roles on delete cascade,
+    is_primary boolean not null,
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index userRolesUserIdIndex on userRoles(userId);
+create index user_roles_user_id_index on user_roles(user_id);
 
 create table files (
     id uuid primary key,
     filename text not null,
-    originalName text not null,
-    sizeBytes integer not null,
-    mimeType text not null,
-    uploadedBy integer references users on delete set null,
-    uploadedAt timestamptz not null default now(),
-    organisationId integer not null references organisations on delete cascade
+    original_name text not null,
+    size_bytes integer not null,
+    mime_type text not null,
+    uploaded_by integer references users on delete set null,
+    uploaded_at timestamptz not null default now(),
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index filesOrganisationIdIndex on files(organisationId);
+create index files_organisation_id_index on files(organisation_id);
 
-create table userFiles (
+create table user_files (
     id serial primary key,
-    userId integer not null references users on delete cascade,
-    fileId uuid not null references files on delete cascade,
-    organisationId integer not null references organisations on delete cascade
+    user_id integer not null references users on delete cascade,
+    file_id uuid not null references files on delete cascade,
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index userFilesUserIdIndex on userFiles(userId);
+create index user_files_user_id_index on user_files(user_id);
 
 create table locations (
     id serial primary key,
     name text not null,
     abbreviation text not null,
-    timeZone text not null,
+    time_zone text not null,
     address text,
-    createdAt timestamptz not null default now(),
-    organisationId integer not null references organisations on delete cascade
+    created_at timestamptz not null default now(),
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index locationsOrganisationIdIndex on locations(organisationId);
+create index locations_organisation_id_index on locations(organisation_id);
 
 create table areas (
     id serial primary key,
     name text not null,
     abbreviation text not null,
-    locationId integer not null references locations on delete cascade,
+    location_id integer not null references locations on delete cascade,
     notes text,
-    createdAt timestamptz not null default now(),
-    organisationId integer not null references organisations on delete cascade
+    created_at timestamptz not null default now(),
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index areasLocationIdIndex on areas(locationId);
-create index areasOrganisationIdIndex on areas(organisationId);
+create index areas_location_id_index on areas(location_id);
+create index areas_organisation_id_index on areas(organisation_id);
 
-create table placementGroups (
+create table placement_groups (
     id serial primary key,
     name text not null,
-    startTime timestamptz,
-    endTime timestamptz,
+    start_time timestamptz,
+    end_time timestamptz,
     notes text,
-    organisationId integer not null references organisations on delete cascade
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index placementGroupsOrganisationIdIndex on placementGroups(organisationId);
+create index placement_groups_organisation_id_index on placement_groups(organisation_id);
 
 create table placements (
     id serial primary key,
-    groupId integer not null references placementGroups on delete cascade,
-    userId integer references users on delete set null,
-    minutesRequired integer,
-    organisationId integer not null references organisations on delete cascade
+    group_id integer not null references placement_groups on delete cascade,
+    user_id integer references users on delete set null,
+    minutes_required integer,
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index placementsGroupIdIndex on placements(groupId);
-create index placementsUserIdIndex on placements(userId);
+create index placements_group_id_index on placements(group_id);
+create index placements_user_id_index on placements(user_id);
 
-create table placementFiles (
+create table placement_files (
     id serial primary key,
-    placementId integer not null references placements on delete cascade,
-    fileId uuid not null references files on delete cascade,
-    organisationId integer not null references organisations on delete cascade
+    placement_id integer not null references placements on delete cascade,
+    file_id uuid not null references files on delete cascade,
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index placementFilesPlacementIdIndex on placementFiles(placementId);
+create index placement_files_placement_id_index on placement_files(placement_id);
 
-create table fieldGroups (
+create table field_groups (
     id serial primary key,
     label text not null,
-    organisationId integer not null references organisations on delete cascade
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index fieldGroupsOrganisationIdIndex on fieldGroups(organisationId);
+create index field_groups_organisation_id_index on field_groups(organisation_id);
 
 create table fields (
     id serial primary key,
-    groupId integer references fieldGroups on delete cascade,
+    group_id integer references field_groups on delete cascade,
     label text not null,
-    fieldType text not null check (fieldType in (
-        'smallText',
+    field_type text not null check (field_type in (
+        'small_text',
         'text',
         'textarea',
         'select',
         'date',
         'numeric'
     )),
-    organisationId integer not null references organisations on delete cascade
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index fieldsGroupIdIndex on fields(groupId);
-create index fieldsOrganisationIdIndex on fields(organisationId);
+create index fields_group_id_index on fields(group_id);
+create index fields_organisation_id_index on fields(organisation_id);
 
-create table fieldItems (
+create table field_items (
     id serial primary key,
-    fieldId integer not null references fields on delete cascade,
+    field_id integer not null references fields on delete cascade,
     label text not null,
-    organisationId integer not null references organisations on delete cascade
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index fieldItemsFieldIdIndex on fieldItems(fieldId);
+create index field_items_field_id_index on field_items(field_id);
 
-create table placementFields (
+create table placement_fields (
     id serial primary key,
-    placementId integer not null references placements on delete cascade,
-    fieldId integer not null references fields on delete cascade,
-    requiredValue text,
-    atLeast timestamptz,
-    atMost timestamptz,
-    organisationId integer not null references organisations on delete cascade
+    placement_id integer not null references placements on delete cascade,
+    field_id integer not null references fields on delete cascade,
+    required_value text,
+    at_least timestamptz,
+    at_most timestamptz,
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index placementFieldsPlacementIdIndex on placementFields(placementId);
+create index placement_fields_placement_id_index on placement_fields(placement_id);
 
-create table userFields (
+create table user_fields (
     id serial primary key,
-    userId integer not null references users on delete cascade,
-    fieldId integer not null references fields on delete cascade,
-    fieldItemId integer references fieldItems on delete cascade,
-    fieldValue text,
-    dateValue timestamptz,
-    organisationId integer not null references organisations on delete cascade
+    user_id integer not null references users on delete cascade,
+    field_id integer not null references fields on delete cascade,
+    field_item_id integer references field_items on delete cascade,
+    field_value text,
+    date_value timestamptz,
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index userFieldsUserIdIndex on userFields(userId);
+create index user_fields_user_id_index on user_fields(user_id);
 
-create table userAreas (
+create table user_areas (
     id serial primary key,
-    userId integer not null references users on delete cascade,
-    areaId integer not null references areas on delete cascade,
-    startTime timestamptz not null,
-    endTime timestamptz,
-    roleId integer not null references roles on delete cascade,
-    organisationId integer not null references organisations on delete cascade
+    user_id integer not null references users on delete cascade,
+    area_id integer not null references areas on delete cascade,
+    start_time timestamptz not null,
+    end_time timestamptz,
+    role_id integer not null references roles on delete cascade,
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index userAreasIndex on userAreas(areaId, startTime, endTime);
-create index userAreasUserIdIndex on userAreas(userId);
+create index user_areas_index on user_areas(area_id, start_time, end_time);
+create index user_areas_user_id_index on user_areas(user_id);
 
 create table templates (
     id serial primary key,
     name text not null,
-    createdAt timestamptz not null default now(),
-    createdBy integer references users on delete set null,
-    organisationId integer not null references organisations on delete cascade
+    created_at timestamptz not null default now(),
+    created_by integer references users on delete set null,
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index templatesOrganisationIdIndex on templates(organisationId);
+create index templates_organisation_id_index on templates(organisation_id);
 
-create table templateApplications (
+create table template_applications (
     id serial primary key,
-    templateId integer not null references templates on delete cascade,
-    startTime timestamptz not null,
-    endTime timestamptz not null,
-    organisationId integer not null references organisations on delete cascade
+    template_id integer not null references templates on delete cascade,
+    start_time timestamptz not null,
+    end_time timestamptz not null,
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create table templateAreaCapacities (
+create table template_area_capacities (
     id serial primary key,
-    templateId integer not null references templates on delete cascade,
-    areaId integer not null references areas on delete cascade,
-    startTime timestamptz not null,
-    endTime timestamptz not null,
+    template_id integer not null references templates on delete cascade,
+    area_id integer not null references areas on delete cascade,
+    start_time timestamptz not null,
+    end_time timestamptz not null,
     capacity integer not null,
-    organisationId integer not null references organisations on delete cascade
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index templateAreaCapacitiesTemplateIdIndex on templateAreaCapacities(templateId);
+create index template_area_capacities_template_id_index on template_area_capacities(template_id);
 
-create table areaCapacities (
+create table area_capacities (
     id serial primary key,
-    areaId integer not null references areas on delete cascade,
-    startTime timestamptz not null,
-    endTime timestamptz not null,
+    area_id integer not null references areas on delete cascade,
+    start_time timestamptz not null,
+    end_time timestamptz not null,
     capacity integer not null,
-    templateId integer not null references templateApplications on delete set null,
-    organisationId integer not null references organisations on delete cascade
+    template_id integer not null references template_applications on delete set null,
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index areaCapacitiesAreaIdIndex on areaCapacities(areaId);
+create index area_capacities_area_id_index on area_capacities(area_id);
 
-create table questionGroups (
+create table question_groups (
     id serial primary key,
     name text not null,
-    organisationId integer not null references organisations on delete cascade
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index questionGroupsOrganisationIdIndex on questionGroups(organisationId);
+create index question_groups_organisation_id_index on question_groups(organisation_id);
 
-create table templateShifts (
+create table template_shifts (
     id serial primary key,
-    templateId integer not null references templates on delete cascade,
-    areaId integer not null references areas on delete cascade,
-    startTime timestamptz not null,
-    endTime timestamptz not null,
-    breakSeconds integer not null,
+    template_id integer not null references templates on delete cascade,
+    area_id integer not null references areas on delete cascade,
+    start_time timestamptz not null,
+    end_time timestamptz not null,
+    break_seconds integer not null,
     capacity integer,
-    questionGroupId integer references questionGroups on delete set null,
-    organisationId integer not null references organisations on delete cascade
+    question_group_id integer references question_groups on delete set null,
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index templateShiftsTemplateIdIndex on templateShifts(templateId);
+create index template_shifts_template_id_index on template_shifts(template_id);
 
 create table shifts (
     id serial primary key,
-    areaId integer not null references areas on delete cascade,
-    startTime timestamptz not null,
-    endTime timestamptz not null,
-    editedStartTime timestamptz,
-    editedEndTime timestamptz,
-    editedBy integer references users on delete set null,
-    breakMinutes integer not null,
-    cancelBeforeMinutes integer,
-    bookBeforeMinutes integer,
+    area_id integer not null references areas on delete cascade,
+    start_time timestamptz not null,
+    end_time timestamptz not null,
+    edited_start_time timestamptz,
+    edited_end_time timestamptz,
+    edited_by integer references users on delete set null,
+    break_minutes integer not null,
+    cancel_before_minutes integer,
+    book_before_minutes integer,
     capacity integer,
     notes text,
-    questionGroupId integer references questionGroups on delete set null,
-    templateId integer references templateApplications on delete set null,
-    organisationId integer not null references organisations on delete cascade
+    question_group_id integer references question_groups on delete set null,
+    template_id integer references template_applications on delete set null,
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index shiftsIndex on shifts(areaId, startTime, endTime);
+create index shifts_index on shifts(area_id, start_time, end_time);
 
-create table bookingTemplates (
+create table booking_templates (
     id serial primary key,
     name text not null,
-    createdAt timestamptz not null default now(),
-    createdBy integer references users on delete set null,
-    organisationId integer not null references organisations on delete cascade
+    created_at timestamptz not null default now(),
+    created_by integer references users on delete set null,
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index bookingTemplatesOrganisationIdIndex on bookingTemplates(organisationId);
+create index booking_templates_organisation_id_index on booking_templates(organisation_id);
 
-create table bookingTemplateBookings (
+create table booking_template_bookings (
     id serial primary key,
-    templateId integer not null references bookingTemplates on delete cascade,
-    shiftId integer not null references shifts on delete cascade,
-    roleId integer not null references roles on delete cascade,
-    organisationId integer not null references organisations on delete cascade
+    template_id integer not null references booking_templates on delete cascade,
+    shift_id integer not null references shifts on delete cascade,
+    role_id integer not null references roles on delete cascade,
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index bookingTemplateBookingsTemplateIdIndex on bookingTemplateBookings(templateId);
+create index booking_template_bookings_template_id_index on booking_template_bookings(template_id);
 
 create table bookings (
     id serial primary key,
-    shiftId integer not null references shifts on delete cascade,
-    userId integer references users on delete set null,
-    roleId integer not null references roles on delete cascade,
-    bookedAt timestamptz not null default now(),
-    bookedBy integer references users on delete set null,
-    cancelledAt timestamptz,
-    cancelledBy integer references users on delete set null,
-    templateId integer references bookingTemplates on delete set null,
-    organisationId integer not null references organisations on delete cascade
+    shift_id integer not null references shifts on delete cascade,
+    user_id integer references users on delete set null,
+    role_id integer not null references roles on delete cascade,
+    booked_at timestamptz not null default now(),
+    booked_by integer references users on delete set null,
+    cancelled_at timestamptz,
+    cancelled_by integer references users on delete set null,
+    template_id integer references booking_templates on delete set null,
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index bookingsShiftIdIndex on bookings(shiftId);
-create index bookingsUserIdIndex on bookings(userId);
+create index bookings_shift_id_index on bookings(shift_id);
+create index bookings_user_id_index on bookings(user_id);
 
 create table tasks (
     id serial primary key,
     name text not null,
-    organisationId integer not null references organisations on delete cascade
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index tasksOrganisationIdIndex on tasks(organisationId);
+create index tasks_organisation_id_index on tasks(organisation_id);
 
-create table placementTasks (
+create table placement_tasks (
     id serial primary key,
-    placementId integer not null references placements on delete cascade,
-    taskId integer not null references tasks on delete cascade,
-    minutesRequired integer not null,
-    organisationId integer not null references organisations on delete cascade
+    placement_id integer not null references placements on delete cascade,
+    task_id integer not null references tasks on delete cascade,
+    minutes_required integer not null,
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index placementTasksPlacementIdIndex on placementTasks(placementId);
+create index placement_tasks_placement_id_index on placement_tasks(placement_id);
 
-create table shiftTasks (
+create table shift_tasks (
     id serial primary key,
-    shiftId integer not null references shifts on delete cascade,
-    taskId integer not null references tasks on delete cascade,
-    durationMinutes integer not null,
-    organisationId integer not null references organisations on delete cascade
+    shift_id integer not null references shifts on delete cascade,
+    task_id integer not null references tasks on delete cascade,
+    duration_minutes integer not null,
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index shiftTasksShiftIdIndex on shiftTasks(shiftId);
+create index shift_tasks_shift_id_index on shift_tasks(shift_id);
 
-create table adhocTasks (
+create table adhoc_tasks (
     id serial primary key,
-    bookingId integer not null references bookings on delete cascade,
-    taskId integer not null references tasks on delete cascade,
-    durationMinutes integer not null,
-    createdAt timestamptz not null default now(),
-    createdBy integer references users on delete set null,
-    removedAt timestamptz,
-    removedBy integer references users on delete set null,
-    organisationId integer not null references organisations on delete cascade
+    booking_id integer not null references bookings on delete cascade,
+    task_id integer not null references tasks on delete cascade,
+    duration_minutes integer not null,
+    created_at timestamptz not null default now(),
+    created_by integer references users on delete set null,
+    removed_at timestamptz,
+    removed_by integer references users on delete set null,
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index adhocTasksBookingIdIndex on adhocTasks(bookingId);
+create index adhoc_tasks_booking_id_index on adhoc_tasks(booking_id);
 
-create table shiftPrerequisites (
+create table shift_prerequisites (
     id serial primary key,
-    shiftId integer not null references shifts on delete cascade,
-    taskId integer not null references tasks on delete cascade,
-    minutesRequired integer not null,
-    organisationId integer not null references organisations on delete cascade
+    shift_id integer not null references shifts on delete cascade,
+    task_id integer not null references tasks on delete cascade,
+    minutes_required integer not null,
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index shiftPrerequisitesShiftIndex on shiftPrerequisites(shiftId);
+create index shift_prerequisites_shift_index on shift_prerequisites(shift_id);
 
-create table shiftRoles (
+create table shift_roles (
     id serial primary key,
-    shiftId integer not null references shifts on delete cascade,
-    roleId integer not null references roles on delete cascade,
+    shift_id integer not null references shifts on delete cascade,
+    role_id integer not null references roles on delete cascade,
     amount integer not null,
-    organisationId integer not null references organisations on delete cascade
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index shiftRolesShiftIdIndex on shiftRoles(shiftId);
+create index shift_roles_shift_id_index on shift_roles(shift_id);
 
-create table templateShiftGroups (
+create table template_shift_groups (
     id serial primary key,
-    templateId integer not null references templates on delete cascade,
+    template_id integer not null references templates on delete cascade,
     capacity integer,
-    organisationId integer not null references organisations on delete cascade
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index templateShiftGroupsTemplateIdIndex on templateShiftGroups(templateId);
+create index template_shift_groups_template_id_index on template_shift_groups(template_id);
 
-create table templateShiftGroupCapacities (
+create table template_shift_group_capacities (
     id serial primary key,
-    groupId integer not null references templateShiftGroups on delete cascade,
-    templateShiftId integer not null references templateShifts on delete cascade,
+    group_id integer not null references template_shift_groups on delete cascade,
+    template_shift_id integer not null references template_shifts on delete cascade,
     capacity integer,
-    organisationId integer not null references organisations on delete cascade
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index templateShiftGroupCapacitiesGroupIdIndex on templateShiftGroupCapacities(groupId);
+create index template_shift_group_capacities_group_id_index on template_shift_group_capacities(group_id);
 
-create table shiftGroups (
+create table shift_groups (
     id serial primary key,
     capacity integer,
-    templateId integer references templateApplications on delete set null,
-    organisationId integer not null references organisations on delete cascade
+    template_id integer references template_applications on delete set null,
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create table shiftGroupCapacities (
+create table shift_group_capacities (
     id serial primary key,
-    shiftGroupId integer not null references shiftGroups on delete cascade,
-    shiftId integer not null references shifts on delete cascade,
+    shift_group_id integer not null references shift_groups on delete cascade,
+    shift_id integer not null references shifts on delete cascade,
     capacity integer,
-    organisationId integer not null references organisations on delete cascade
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index shiftGroupCapacitiesShiftIdIndex on shiftGroupCapacities(shiftId);
+create index shift_group_capacities_shift_id_index on shift_group_capacities(shift_id);
 
-create table templateTimePeriods (
+create table template_time_periods (
     id serial primary key,
-    templateId integer not null references templates on delete cascade,
-    areaId integer not null references areas on delete cascade,
-    startTime timestamptz not null,
-    endTime timestamptz not null,
+    template_id integer not null references templates on delete cascade,
+    area_id integer not null references areas on delete cascade,
+    start_time timestamptz not null,
+    end_time timestamptz not null,
     capacity integer,
-    organisationId integer not null references organisations on delete cascade
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index templateTimePeriodsTemplateIdIndex on templateTimePeriods(templateId);
+create index template_time_periods_template_id_index on template_time_periods(template_id);
 
-create table templateTimePeriodRoles (
+create table template_time_period_roles (
     id serial primary key,
-    templateTimePeriodId integer not null references templateTimePeriods on delete cascade,
-    roleId integer not null references roles on delete cascade,
+    template_time_period_id integer not null references template_time_periods on delete cascade,
+    role_id integer not null references roles on delete cascade,
     capacity integer not null,
-    organisationId integer not null references organisations on delete cascade
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index templateTimePeriodRolesTemplateTimePeriodIdIndex on templateTimePeriodRoles(templateTimePeriodId);
+create index template_time_period_roles_template_time_period_id_index on template_time_period_roles(template_time_period_id);
 
-create table timePeriods (
+create table time_periods (
     id serial primary key,
-    areaId integer not null references areas on delete cascade,
-    startTime timestamptz not null,
-    endTime timestamptz not null,
+    area_id integer not null references areas on delete cascade,
+    start_time timestamptz not null,
+    end_time timestamptz not null,
     capacity integer,
-    templateId integer references templateApplications on delete set null,
-    organisationId integer not null references organisations on delete cascade
+    template_id integer references template_applications on delete set null,
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index timePeriodsIndex on timePeriods(areaId, startTime, endTime);
+create index time_periods_index on time_periods(area_id, start_time, end_time);
 
-create table timePeriodRoles (
+create table time_period_roles (
     id serial primary key,
-    timePeriodId integer not null references timePeriods on delete cascade,
-    roleId integer not null references roles on delete cascade,
+    time_period_id integer not null references time_periods on delete cascade,
+    role_id integer not null references roles on delete cascade,
     capacity integer not null,
-    organisationId integer not null references organisations on delete cascade
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index timePeriodRolesTimePeriodIdIndex on timePeriodRoles(timePeriodId);
+create index time_period_roles_time_period_id_index on time_period_roles(time_period_id);
 
 create table questions (
     id serial primary key,
-    groupId integer not null references questionGroups on delete cascade,
-    questionType text not null check (questionType in (
-        'Multiple-choice',
-        'Comment',
-        'Scale',
-        'Numeric')),
-    questionOrder integer not null,
+    group_id integer not null references question_groups on delete cascade,
+    question_type text not null check (question_type in (
+        '_multiple-choice',
+        '_comment',
+        '_scale',
+        '_numeric')),
+    question_order integer not null,
     question text not null,
-    organisationId integer not null references organisations on delete cascade
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index questionsGroupIdIndex on questions(groupId);
+create index questions_group_id_index on questions(group_id);
 
-create table questionRoles (
+create table question_roles (
     id serial primary key,
-    questionId integer not null references questions on delete cascade,
-    roleId integer not null references roles on delete cascade,
-    organisationId integer not null references organisations on delete cascade
+    question_id integer not null references questions on delete cascade,
+    role_id integer not null references roles on delete cascade,
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index questionRolesQuestionIdIndex on questionRoles(questionId);
+create index question_roles_question_id_index on question_roles(question_id);
 
 create table options (
     id serial primary key,
-    questionId integer not null references questions on delete cascade,
-    optionOrder integer not null,
+    question_id integer not null references questions on delete cascade,
+    option_order integer not null,
     label text not null,
-    alertIfSelected boolean not null,
-    alertWords text,
-    organisationId integer not null references organisations on delete cascade
+    alert_if_selected boolean not null,
+    alert_words text,
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index optionsQuestionIdIndex on options(questionId);
+create index options_question_id_index on options(question_id);
 
 create table answers (
     id serial primary key,
-    bookingId integer not null references bookings on delete cascade,
-    optionId integer not null references options,
+    booking_id integer not null references bookings on delete cascade,
+    option_id integer not null references options,
     comments text,
-    organisationId integer not null references organisations on delete cascade
+    organisation_id integer not null references organisations on delete cascade
 );
 
-create index answersBookingIdIndex on answers(bookingId);
-create index answersOptionIdIndex on answers(optionId);
+create index answers_booking_id_index on answers(booking_id);
+create index answers_option_id_index on answers(option_id);

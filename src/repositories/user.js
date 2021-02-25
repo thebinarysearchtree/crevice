@@ -13,13 +13,13 @@ const insert = async ({
 }, client = pool) => {
   const result = await client.query(`
     insert into users(
-      firstName,
-      lastName,
+      first_name,
+      last_name,
       email,
       password,
-      refreshToken,
-      emailToken,
-      isAdmin)
+      refresh_token,
+      email_token,
+      is_admin)
     values($1, $2, $3, $4, $5, $6, $7)
     returning id`, [
       firstName,
@@ -60,40 +60,40 @@ const insertUsers = async (users, client) => {
     .join(', ');
   return await client.query(`
     insert into users(
-      firstName,
-      lastName,
+      first_name,
+      last_name,
       email,
       password,
-      refreshToken,
-      emailToken,
-      isAdmin,
-      imageId)
+      refresh_token,
+      email_token,
+      is_admin,
+      image_id)
     values${params}
     returning
       id,
-      firstName,
-      lastName,
+      first_name,
+      last_name,
       email,
-      emailToken`, values);
+      email_token`, values);
 }
 
 const insertUserOrganisations = async (userIds, organisationId, client) => {
   const params = userIds.map((v, i) => `($1, $${i + 2})`).join(', ');
     await client.query(`
-      insert into userOrganisations(
-        organisationId,
-        userId)
+      insert into user_organisations(
+        organisation_id,
+        user_id)
       values${params}`, [organisationId, ...userIds]);
 }
 
 const validateTags = async (tagIds, organisationId, client) => {
   const params = tagIds.map((t, i) => `${i + 2}`).join(', ');
   const result = await client.query(`
-    select count(*) as "validTags"
+    select count(*) as valid_tags
     from tags
     where 
       id in (${params}) and
-      organisationId = $1`, [organisationId, ...tagIds]);
+      organisation_id = $1`, [organisationId, ...tagIds]);
   return result[0].validTags === tagIds.length;
 }
 
@@ -101,14 +101,14 @@ const insertUserTags = async (userIds, tagIds, organisationId, client) => {
   const userParams = userIds.map((v, i) => `($${i + 2})`).join(', ');
   const tagParams = tagIds.map((t, i) => `($${i + userIds.length + 2})`).join(', ');
   await client.query(`
-    insert into userTags(
-      userId,
-      tagId,
-      organisationId)
+    insert into user_tags(
+      user_id,
+      tag_id,
+      organisation_id)
     select 
-      u.id as userId,
-      t.id as tagId,
-      $1 as organisationId
+      u.id as user_id,
+      t.id as tag_id,
+      $1 as organisation_id
     from 
       (values ${userParams}) as u(id),
       (values ${tagParams}) as t(id)`, [organisationId, ...userIds, ...tagIds]);
@@ -117,11 +117,11 @@ const insertUserTags = async (userIds, tagIds, organisationId, client) => {
 const validateRoles = async (roleIds, organisationId, client) => {
   const params = roleIds.map((r, i) => `${i + 2}`).join(', ');
   const result = await client.query(`
-    select count(*) as "validRoles"
+    select count(*) as valid_roles
     from roles
     where
       id in (${params}) and
-      organisationId = $1`, [organisationId, ...roleIds]);
+      organisation_id = $1`, [organisationId, ...roleIds]);
   return result[0].validRoles === roles.length;
 }
 
@@ -133,19 +133,19 @@ const insertUserRoles = async (userIds, roles, organisationId, client) => {
     .map((r, i) => `(${i + userIds.length + 2}, ${i + userIds.length + 3})`)
     .join(', ');
   await client.query(`
-    insert into userRoles(
-      userId,
-      roleId,
-      isPrimary,
-      organisationId)
+    insert into user_roles(
+      user_id,
+      role_id,
+      is_primary,
+      organisation_id)
     select
-      u.id as userId,
-      r.id as roleId,
-      r.isPrimary,
-      $1 as organisationId
+      u.id as user_id,
+      r.id as role_id,
+      r.is_primary,
+      $1 as organisation_id
     from
       (values ${userParams}) as u(id),
-      (values ${roleParams}) as r(id, isPrimary)`, [organisationId, ...userIds, ...roles.flatMap(r => [r.id, r.isPrimary])]);
+      (values ${roleParams}) as r(id, is_primary)`, [organisationId, ...userIds, ...roles.flatMap(r => [r.id, r.isPrimary])]);
 }
 
 const insertMany = async (users, tagIds, roles, organisationId) => {
@@ -184,9 +184,9 @@ const insertMany = async (users, tagIds, roles, organisationId) => {
 
 const addOrganisation = async (userId, organisationId, client = pool) => {
   await client.query(`
-    insert into userOrganisations(
-      userId,
-      organisationId)
+    insert into user_organisations(
+      user_id,
+      organisation_id)
     values($1, $2)`, [userId, organisationId]);
 }
 
@@ -202,17 +202,17 @@ const getById = async (userId, organisationId, client = pool) => {
   const result = await client.query(`
     select
       u.id,
-      u.firstName as "firstName",
-      u.lastName as "lastName",
+      u.first_name,
+      u.last_name,
       u.email,
-      u.emailToken as "emailToken"
+      u.email_token
     from 
       users u,
-      userOrganisations o
+      user_organisations o
     where
       u.id = $1 and
-      o.userId = u.id and
-      o.organisationId = $2`, [userId, organisationId]);
+      o.user_id = u.id and
+      o.organisation_id = $2`, [userId, organisationId]);
   return result.rows[0];
 }
 
@@ -220,101 +220,87 @@ const setEmailToken = async (email, emailToken, client = pool) => {
   const result = await client.query(`
     update users
     set
-      emailToken = $2,
-      emailTokenExpiry = now() + interval '1 day'
+      email_token = $2,
+      email_token_expiry = now() + interval '1 day'
     where
       email = $1 and
-      isDisabled is false
+      is_disabled is false
     returning 
       id, 
-      firstName`, [email, emailToken]);
+      first_name`, [email, emailToken]);
   return result.rows[0];
 }
 
 const getByEmail = async (email, client = pool) => {
-  const result = await client.query(`
-    with availableRoles as (
-      select
-        $1 as "email",
-        json_agg(json_build_object(
-          'id', r.id,
-          'name', r.name,
-          'defaultView', r.defaultView,
-          'canEditBookingBefore', r.canEditBookingBefore,
-          'canEditBookingAfter', r.canEditBookingAfter,
-          'canRequestEdit', r.canRequestEdit,
-          'canApproveEdit', r.canApproveEdit,
-          'canBookAndCancelForOthers', r.canBookAndCancelForOthers,
-          'canEditShift', r.canEditShift,
-          'canViewProfiles', r.canViewProfiles,
-          'canViewAnswers', r.canViewAnswers)) as "roles"
-      from
-        users u,
-        userRoles ur,
-        roles r
-      where
-        u.email = $1 and
-        ur.userId = u.id and
-        ur.roleId = r.id),
-    availableAreas as (
-      select
-        $1 as "email",
-        json_agg(json_build_object(
-          'id', a.areaId,
-          'roleId', a.roleId)) as "areas"
-      from
-        users u,
-        userAreas a
-      where
-        u.email = $1 and
-        a.userId = u.id and
-        a.startTime <= now() and
-        (a.endTime is null or a.endTime > now()))
-    select 
-      u.id,
-      u.firstName as "firstName",
-      u.lastName as "lastName",
-      u.email,
-      u.password,
-      u.refreshToken as "refreshToken",
-      u.isAdmin as "isAdmin",
-      u.isDisabled as "isDisabled",
-      u.isVerified as "isVerified",
-      u.failedPasswordAttempts as "failedPasswordAttempts",
-      case when 
-        r.email is null then json_build_array()
-        else r.roles end as "roles",
-      case when
-        a.email is null then json_build_array()
-        else a.areas end as "areas",
-      o.organisationId as "organisationId"
+  const promises = [];
+
+  promises.push(client.query(`
+    select r.* 
     from 
-      users u join
-      userOrganisations o on u.id = o.userId
-      left join
-      availableRoles r on u.email = r.email
-      left join
-      availableAreas a on u.email = a.email
+      users u,
+      user_roles ur,
+      roles r
     where
       u.email = $1 and
-      o.isDefault`, [email]);
-  return result.rows[0];
+      ur.userId = u.id and
+      ur.roleId = r.id`, [email]));
+
+  promises.push(client.query(`
+    select
+      a.area_id as id,
+      a.role_id as role_id
+    from
+      users u,
+      user_areas a
+    where
+      u.email = $1 and
+      a.user_id = u.id and
+      a.start_time <= now() and
+      (a.end_time is null or a.end_time > now())`, [email]));
+      
+  promises.push(client.query(`
+    select 
+      u.id,
+      u.first_name,
+      u.last_name,
+      u.email,
+      u.password,
+      u.refresh_token,
+      u.is_admin,
+      u.is_disabled,
+      u.is_verified,
+      u.failed_password_attempts,
+      o.organisation_id
+    from 
+      users u,
+      user_organisations o
+    where
+      u.email = $1 and
+      u.id = o.user_id and
+      o.is_default`, [email]));
+  const results = await Promise.all(promises);
+
+  const user = results[2].rows[0];
+  user.roles = results[0].rows;
+  user.areas = results[1].rows;
+
+  return user;
 }
 
 const getTasks = async (organisationId, client = pool) => {
   const result = await client.query(`
     select 
-      not exists (select 1 from roles where organisationId = $1) as "needsRoles",
-      not exists (select 1 from locations where organisationId = $1) as "needsLocations",
-      not exists (select 1 from areas where organisationId = $1) as "needsAreas",
-      not exists (select 1 from tags where organisationId = $1) as "needsTags",
-      not exists (select 1 from userRoles where organisationId = $1) as "needsUsers";`, [organisationId]);
+      not exists (select 1 from roles where organisation_id = $1) as needs_roles,
+      not exists (select 1 from locations where organisation_id = $1) as needs_locations,
+      not exists (select 1 from areas where organisation_id = $1) as needs_areas,
+      not exists (select 1 from tags where organisation_id = $1) as needs_tags,
+      not exists (select 1 from user_roles where organisation_id = $1) as needs_users;`, [organisationId]);
   return result.rows[0];
 }
 
 const getRefreshToken = async (userId, client = pool) => {
   const result = await client.query(`
-      select refreshToken as "refreshToken"
+      select refresh_token
       from users
       where id = $1`, [userId]);
   return result.rows[0].refreshToken;
@@ -323,7 +309,7 @@ const getRefreshToken = async (userId, client = pool) => {
 const changePassword = async (hash, refreshToken, userId, client = pool) => {
   await client.query(`
     update users 
-    set password = $1, refreshToken = $2 
+    set password = $1, refresh_token = $2 
     where id = $3`, [hash, refreshToken, userId]);
 }
 
@@ -332,14 +318,14 @@ const changePasswordWithToken = async (userId, emailToken, hash, client = pool) 
     update users
     set 
       password = $3,
-      emailToken = null,
-      emailTokenExpiry = null,
-      isVerified = true
+      email_token = null,
+      email_token_expiry = null,
+      is_verified = true
     where
       id = $1 and
-      emailToken = $2 and
-      emailTokenExpiry > now() and
-      isDisabled is false`, [userId, emailToken, hash]);
+      email_token = $2 and
+      email_token_expiry > now() and
+      is_disabled is false`, [userId, emailToken, hash]);
   return result.rowCount === 1;
 }
 
@@ -351,8 +337,8 @@ const update = async ({
   await client.query(`
     update users 
     set 
-      firstName = $1,
-      lastName = $2,
+      first_name = $1,
+      last_name = $2,
       email = $3
     where id = $4`, [firstName, lastName, email, userId]);
 }
@@ -360,10 +346,10 @@ const update = async ({
 const changeImage = async (userId, imageId, organisationId, client = pool) => {
   await client.query(`
     update users
-    set imageId = $2
+    set image_id = $2
     where 
       id = $1 and
-      organisationId = $3`, [userId, imageId, organisationId]);
+      organisation_id = $3`, [userId, imageId, organisationId]);
 }
 
 const updateImages = async (images, organisationId, client = pool) => {
@@ -373,16 +359,16 @@ const updateImages = async (images, organisationId, client = pool) => {
   const params = images.flatMap(i => [i.email, i.imageId]);
   const result = await client.query(`
     update users
-    set imageId = i.imageId
+    set image_id = i.image_id
     from
-      (values ${values}) as i(email, imageId),
+      (values ${values}) as i(email, image_id),
       users u,
-      userOrganisations o
+      user_organisations o
     where
       email = i.email and
       u.email = i.email and
-      o.userId = u.id and
-      o.organisationId = $1
+      o.user_id = u.id and
+      o.organisation_id = $1
     returning email`, [organisationId, ...params]);
   return result.map(r => r.email);
 }
@@ -390,20 +376,20 @@ const updateImages = async (images, organisationId, client = pool) => {
 const changeTag = async (userId, tagId, organisationId, client = pool) => {
   await client.query(`
     update users
-    set tagId = $2
+    set tag_id = $2
     where
       id = $1 and
       ($2 is null or exists(
         select 1 from tags
         where
           id = $2 and
-          organisationId = $3))`, [userId, tagId, organisationId]);
+          organisation_id = $3))`, [userId, tagId, organisationId]);
 }
 
 const resetFailedPasswordAttempts = async (userId, client = pool) => {
   await client.query(`
     update users
-    set failedPasswordAttempts = 0
+    set failed_password_attempts = 0
     where id = $1`, [userId, amount]);
 }
 
@@ -411,26 +397,26 @@ const incrementFailedPasswordAttempts = async (userId, client = pool) => {
   await client.query(`
     update users
     set 
-      failedPasswordAttempts = failedPasswordAttempts + 1,
-      isDisabled = case when 
-        (failedPasswordAttempts + 1) = 5 then true
-        else isDisabled end
+      failed_password_attempts = failed_password_attempts + 1,
+      is_disabled = case when 
+        (failed_password_attempts + 1) = 5 then true
+        else is_disabled end
     where
       id = $1 and
-      isDisabled is false`, [userId]);
+      is_disabled is false`, [userId]);
 }
 
 const disable = async (userId, client = pool) => {
   await client.query(`
     update users
-    set isDisabled = true
+    set is_disabled = true
     where id = $1`, [userId]);
 }
 
 const enable = async (userId, client = pool) => {
   await client.query(`
     update users
-    set isDisabled = false
+    set is_disabled = false
     where id = $1`, [userId]);
 }
 
@@ -438,16 +424,16 @@ const verify = async (userId, emailToken, client = pool) => {
   const result = await client.query(`
     update users
     set 
-      isVerified = true,
-      emailToken = null,
-      emailTokenExpiry = null
+      is_verified = true,
+      email_token = null,
+      email_token_expiry = null
     where
       id = $1 and
-      isDisabled is false and
-      isVerified is false and
-      emailToken is not null and
-      emailToken = $2 and
-      emailTokenExpiry > now()`, [userId, emailToken]);
+      is_disabled is false and
+      is_verified is false and
+      email_token is not null and
+      email_token = $2 and
+      email_token_expiry > now()`, [userId, emailToken]);
   return result.rowCount === 1;
 }
 
@@ -464,11 +450,11 @@ const deleteById = async (userId, organisationId, client = pool) => {
     where 
       id = $1 and
       exists(
-        select 1 from userOrganisations
+        select 1 from user_organisations
         where
-          userId = $1 and
-          organisationId = $2) and
-      isAdmin is false`, [userId, organisationId]);
+          user_id = $1 and
+          organisation_id = $2) and
+      is_admin is false`, [userId, organisationId]);
 }
 
 module.exports = {
