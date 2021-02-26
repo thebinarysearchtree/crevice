@@ -53,7 +53,7 @@ const signUp = async (req, res) => {
     await client.query('commit');
 
     const url = `https://${config.host}/invite/${userId}/${emailToken}`;
-    const rejected = await mailer.send('signup', [{
+    const rejected = await mailer.send('SignUp', [{
       firstName,
       email,
       url
@@ -139,7 +139,7 @@ const inviteUsers = async (req, res) => {
       url: `https://${config.host}/invite/${u.id}/${u.emailToken}`
     }
   });
-  const rejected = await mailer.send('invite', emailUsers, emailTemplateId, organisationId);
+  const rejected = await mailer.send('Invite', emailUsers, emailTemplateId, organisationId);
   return res.json(rejected);
 }
 
@@ -155,7 +155,7 @@ const resendInvitation = async (req, res) => {
     lastName: user.lastName,
     url: `https://${config.host}/invite/${userId}/${user.emailToken}`
   }
-  const rejected = await mailer.send('invite', [emailUser], emailTemplateId, organisationId);
+  const rejected = await mailer.send('Invite', [emailUser], emailTemplateId, organisationId);
   return res.json(rejected);
 }
 
@@ -168,7 +168,7 @@ const lostPassword = async (req, res) => {
     firstName,
     url
   };
-  await mailer.send('lostPassword', [emailUser], null, organisationId);
+  await mailer.send('LostPassword', [emailUser], null, organisationId);
   return res.sendStatus(200);
 }
 
@@ -302,6 +302,12 @@ const changePassword = async (req, res) => {
     return res.json(token);
   }
   return res.sendStatus(401);
+}
+
+const find = async (req, res) => {
+  const query = req.body;
+  const result = await db.users.find(query, req.user.organisationId);
+  return res.json(result);
 }
 
 const update = async (req, res) => {

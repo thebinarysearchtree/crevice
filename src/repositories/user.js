@@ -242,8 +242,8 @@ const getByEmail = async (email, client = pool) => {
       roles r
     where
       u.email = $1 and
-      ur.userId = u.id and
-      ur.roleId = r.id`, [email]));
+      ur.user_id = u.id and
+      ur.role_id = r.id`, [email]));
 
   promises.push(client.query(`
     select
@@ -327,6 +327,24 @@ const changePasswordWithToken = async (userId, emailToken, hash, client = pool) 
       email_token_expiry > now() and
       is_disabled is false`, [userId, emailToken, hash]);
   return result.rowCount === 1;
+}
+
+const find = async ({
+  term,
+  roleId,
+  areaId,
+  page
+}, organisationId, client = pool) => {
+  term = `%${term}%`;
+  const result = await client.query(`
+    select
+      u.id,
+      u.first_name,
+      u.last_name
+    from
+      users u
+    where
+      ($1 = '' or (concat_ws(' ', u.first_name, u.last_name) ilike $1))`, [term, roleId, areaId, page, organisationId]);
 }
 
 const update = async ({

@@ -2,88 +2,23 @@ const getPool = require('../database/db');
 
 const pool = getPool();
 
-const insert = async ({
-  name,
-  defaultView,
-  canEditBookingBefore,
-  canEditBookingAfter,
-  canRequestEdit,
-  canApproveEdit,
-  canBookAndCancelForOthers,
-  canEditShift,
-  canViewProfiles,
-  canViewAnswers
-}, organisationId, client = pool) => {
+const insert = async (name, organisationId, client = pool) => {
   const result = await client.query(`
     insert into roles(
       name,
-      default_view,
-      can_edit_booking_before,
-      can_edit_booking_after,
-      can_request_edit,
-      can_approve_edit,
-      can_book_and_cancel_for_others,
-      can_edit_shift,
-      can_view_profiles,
-      can_view_answers,
       organisation_id)
-    values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-    returning id`, [
-      name,
-      defaultView,
-      canEditBookingBefore,
-      canEditBookingAfter,
-      canRequestEdit,
-      canApproveEdit,
-      canBookAndCancelForOthers,
-      canEditShift,
-      canViewProfiles,
-      canViewAnswers,
-      organisationId]);
+    values($1, $2)
+    returning id`, [name, organisationId]);
   return result.rows[0].id;
 }
 
-const update = async ({
-  roleId,
-  name,
-  defaultView,
-  canEditBookingBefore,
-  canEditBookingAfter,
-  canRequestEdit,
-  canApproveEdit,
-  canBookAndCancelForOthers,
-  canEditShift,
-  canViewProfiles,
-  canViewAnswers
-}, organisationId, client = pool) => {
+const update = async (roleId, name, organisationId, client = pool) => {
   await client.query(`
     update roles
-    set
-      name = $2,
-      default_view = $3,
-      can_edit_booking_before = $4,
-      can_edit_booking_after = $5,
-      can_request_edit = $6,
-      can_approve_edit = $7,
-      can_book_and_cancel_for_others = $8,
-      can_edit_shift = $9,
-      can_view_profiles = $10,
-      can_view_answers = $11
+    set name = $2
     where
       id = $1 and
-      organisation_id = $12`, [
-        roleId,
-        name,
-        defaultView,
-        canEditBookingBefore,
-        canEditBookingAfter,
-        canRequestEdit,
-        canApproveEdit,
-        canBookAndCancelForOthers,
-        canEditShift,
-        canViewProfiles,
-        canViewAnswers,
-        organisationId]);
+      organisation_id = $3`, [roleId, name, organisationId]);
 }
 
 const getById = async (roleId, organisationId, client = pool) => {

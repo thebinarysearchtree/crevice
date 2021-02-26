@@ -49,6 +49,16 @@ create table users (
     image_id uuid
 );
 
+create table assigned_users (
+    id serial primary key,
+    user_id integer not null references users on delete cascade,
+    assigned_user_id integer not null references users on delete cascade,
+    start_time timestamptz not null,
+    end_time timestamptz,
+    organisation_id integer not null references organisations on delete cascade,
+    unique(user_id, assigned_user_id)
+);
+
 create table user_tags (
     id serial primary key,
     user_id integer not null references users on delete cascade,
@@ -70,15 +80,6 @@ create table user_organisations (
 create table roles (
     id serial primary key,
     name text not null,
-    default_view text not null,
-    can_edit_booking_before boolean not null,
-    can_edit_booking_after boolean not null,
-    can_request_edit boolean not null,
-    can_approve_edit boolean not null,
-    can_book_and_cancel_for_others boolean not null,
-    can_edit_shift boolean not null,
-    can_view_profiles boolean not null,
-    can_view_answers boolean not null,
     created_at timestamptz not null default now(),
     organisation_id integer not null references organisations on delete cascade
 );
@@ -239,6 +240,7 @@ create table user_areas (
     start_time timestamptz not null,
     end_time timestamptz,
     role_id integer not null references roles on delete cascade,
+    is_admin boolean not null,
     organisation_id integer not null references organisations on delete cascade
 );
 
