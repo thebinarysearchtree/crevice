@@ -5,15 +5,6 @@ create table organisations (
     logo_image_id uuid
 );
 
-create table tags (
-    id serial primary key,
-    name text not null,
-    description text,
-    colour text not null,
-    organisation_id integer not null references organisations on delete cascade,
-    unique(name, organisation_id)
-);
-
 create table email_templates (
     id serial primary key,
     type text not null check (type in (
@@ -59,16 +50,6 @@ create table assigned_users (
     unique(user_id, assigned_user_id)
 );
 
-create table user_tags (
-    id serial primary key,
-    user_id integer not null references users on delete cascade,
-    tag_id integer not null references tags on delete cascade,
-    organisation_id integer not null references organisations on delete cascade
-);
-
-create index user_tags_user_id_index on user_tags(user_id);
-create index user_tags_tag_id_index on user_tags(tag_id);
-
 create table user_organisations (
     id serial primary key,
     user_id integer not null references users on delete cascade,
@@ -80,6 +61,7 @@ create table user_organisations (
 create table roles (
     id serial primary key,
     name text not null,
+    colour text not null,
     created_at timestamptz not null default now(),
     organisation_id integer not null references organisations on delete cascade
 );
