@@ -130,22 +130,20 @@ const insertUserRoles = async (userIds, roles, organisationId, client) => {
     .map((v, i) => `($${i + 2})`)
     .join(', ');
   const roleParams = roles
-    .map((r, i) => `(${i + userIds.length + 2}, ${i + userIds.length + 3})`)
+    .map((r, i) => `(${i + userIds.length + 2})`)
     .join(', ');
   await client.query(`
     insert into user_roles(
       user_id,
       role_id,
-      is_primary,
       organisation_id)
     select
       u.id as user_id,
       r.id as role_id,
-      r.is_primary,
       $1 as organisation_id
     from
       (values ${userParams}) as u(id),
-      (values ${roleParams}) as r(id, is_primary)`, [organisationId, ...userIds, ...roles.flatMap(r => [r.id, r.isPrimary])]);
+      (values ${roleParams}) as r(id)`, [organisationId, ...userIds, ...roles.map(r => r.id)]);
 }
 
 const insertMany = async (users, tagIds, roles, organisationId) => {
@@ -333,18 +331,92 @@ const find = async ({
   term,
   roleId,
   areaId,
+  activeDate,
+  orderBy,
+  order,
   page
 }, organisationId, client = pool) => {
-  term = `%${term}%`;
+  const params = [organisationId];
+
+  const select = [];
+  const from = [];
+  const where = [];
+
+  let orderClause = 'order by u.last_name asc';
+
+  const limit = 10;
+  const offset = page * limit;
+  params.push(limit);
+  params.push(offset);
+
+  if (term) {
+    params.push(`%${term}%`);
+    where.push(`and name ilike $${params.length}`);
+  }
+  if (roleId !== -1) {
+    params.push(roleId);
+    from.push('join user_roles ur on ur.user_id = u.id');
+    where.push(`and ur.role_id = $${params.length}`);
+  }
+  if (areaId !== -1) {
+    params.push(areaId);
+    from.push('left join user_areas ua on ua.user_id = u.id');
+    where.push(`and ua.area_id = $${params.length}`);
+    if (activeDate) {
+      params.push(activeDate);
+      where.push(`and ua.start_time <= $${params.length} and (ua.end_time is null or ua.end_time >= $${params.length})`);
+    }
+    else {
+      where.push(`and ua.start_time <= now() and (ua.end_time is null or ua.end_time >= now())`);
+    }
+  }
+  if (orderBy) {
+    if (order === 'asc') {
+      orderClause = 'order by u.id asc';
+    }
+    else {
+      orderClause = 'order by u.id desc';
+    }
+  }
+  if (page === 0) {
+    select.push('count(*) over() as total_count,');
+  }
   const result = await client.query(`
     select
       u.id,
-      u.first_name,
-      u.last_name
+      concat_ws(' ', u.first_name, u.last_name) as name,
+      u.created_at,
+      ${select.join('')}
+      sum(case when b.id is null then 0 else 1 end) as bookings_count
+      sum(case when b.id is null or s.start_time >= now() then 0 else 1 end) as attended_count
     from
-      users u
+      users u join
+      user_organisations uo on uo.user_id = u.id
+      left join
+      bookings b on b.user_id = u.id
+      join
+      shifts s on s.id = b.shift_id
+      ${from.join('')}
     where
-      ($1 = '' or (concat_ws(' ', u.first_name, u.last_name) ilike $1))`, [term, roleId, areaId, page, organisationId]);
+      uo.organisation_id = $1 and
+      b.cancelled_at is null
+      ${where.join('')}
+    group by u.id
+    ${orderClause}
+    limit $2 offset $3`, params);
+  if (result.rows.length === 0) {
+    return {
+      users: [],
+      count: 0
+    };
+  }
+  else {
+    const count = page === 0 ? result.rows[0].totalCount : -1;
+    return {
+      users: result.rows,
+      count
+    };
+  }
 }
 
 const update = async ({
@@ -487,6 +559,7 @@ module.exports = {
   getRefreshToken,
   changePassword,
   changePasswordWithToken,
+  find,
   update,
   changeImage,
   updateImages,

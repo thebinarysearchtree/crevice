@@ -1,4 +1,3 @@
-const getPool = require('../database/db');
 const locationRepository = require('../repositories/location');
 
 const db = {

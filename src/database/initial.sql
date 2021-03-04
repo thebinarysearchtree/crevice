@@ -50,6 +50,18 @@ create table assigned_users (
     unique(user_id, assigned_user_id)
 );
 
+create table booking_followers (
+    id serial primary key,
+    user_id integer not null references users on delete cascade,
+    follower_id integer not null references users on delete cascade,
+    follower_role_id integer not null references roles on delete cascade,
+    start_time timestamptz not null,
+    end_time timestamptz not null,
+    organisation_id integer not null references organisations on delete cascade
+);
+
+create index booking_followers_user_id_index on booking_followers(user_id);
+
 create table user_organisations (
     id serial primary key,
     user_id integer not null references users on delete cascade,
@@ -72,7 +84,6 @@ create table user_roles (
     id serial primary key,
     user_id integer not null references users on delete cascade,
     role_id integer not null references roles on delete cascade,
-    is_primary boolean not null,
     organisation_id integer not null references organisations on delete cascade
 );
 
@@ -298,14 +309,13 @@ create table shifts (
     area_id integer not null references areas on delete cascade,
     start_time timestamptz not null,
     end_time timestamptz not null,
-    edited_start_time timestamptz,
-    edited_end_time timestamptz,
-    edited_by integer references users on delete set null,
     break_minutes integer not null,
-    cancel_before_minutes integer,
-    book_before_minutes integer,
     capacity integer,
     notes text,
+    created_by integer references users on delete set null,
+    created_at timestamptz not null default now(),
+    requires_approval boolean not null,
+    approved_by integer references users on delete set null,
     question_group_id integer references question_groups on delete set null,
     template_id integer references template_applications on delete set null,
     organisation_id integer not null references organisations on delete cascade
@@ -342,6 +352,8 @@ create table bookings (
     booked_by integer references users on delete set null,
     cancelled_at timestamptz,
     cancelled_by integer references users on delete set null,
+    cancellation_requested_at timestamptz,
+    cancellation_request_reason text,
     template_id integer references booking_templates on delete set null,
     organisation_id integer not null references organisations on delete cascade
 );
@@ -406,6 +418,11 @@ create table shift_roles (
     shift_id integer not null references shifts on delete cascade,
     role_id integer not null references roles on delete cascade,
     amount integer not null,
+    cancel_before_minutes integer,
+    cancel_after_minutes integer,
+    book_before_minutes integer,
+    book_after_minutes integer,
+    can_edit_shift boolean not null,
     organisation_id integer not null references organisations on delete cascade
 );
 

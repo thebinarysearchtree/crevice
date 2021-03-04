@@ -306,7 +306,13 @@ const changePassword = async (req, res) => {
 
 const find = async (req, res) => {
   const query = req.body;
-  const result = await db.users.find(query, req.user.organisationId);
+  const user = req.user;
+  if (!user.isAdmin) {
+    if (!user.areas.some(a => a.isAdmin && a.id == query.areaId)) {
+      return res.sendStatus(401);
+    }
+  }
+  const result = await db.users.find(query, user.organisationId);
   return res.json(result);
 }
 
@@ -350,6 +356,7 @@ module.exports = {
   getToken,
   refreshToken,
   changePassword,
+  find,
   update,
   changeImage,
   uploadImages,
