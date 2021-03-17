@@ -41,7 +41,8 @@ const update = async ({
       address = $5
     where
       id = $1 and
-      organisation_id = $6`, [
+      organisation_id = $6 and
+      deleted_at is null`, [
         id,
         name,
         abbreviation,
@@ -65,7 +66,9 @@ const getSelectListItems = async (organisationId, client = pool) => {
       id,
       abbreviation as name
     from locations 
-    where organisation_id = $1
+    where 
+      organisation_id = $1 and
+      deleted_at is null
     order by abbreviation asc`, [organisationId]);
   return result.rows;
 }
@@ -77,20 +80,25 @@ const find = async (organisationId, client = pool) => {
       sum(case when a.id is null then 0 else 1 end) as area_count
     from 
       locations l left join
-      areas a on l.id = a.location_id
+      areas a on 
+        l.id = a.location_id and 
+        a.deleted_at is null
     where
-      l.organisation_id = $1
-    group by
-      l.id`, [organisationId]);
+      l.organisation_id = $1 and
+      l.deleted_at is null
+    group by l.id
+    order by l.name asc`, [organisationId]);
   return result.rows;
 }
 
 const remove = async (locationId, organisationId, client = pool) => {
   await client.query(`
-    delete from locations
+    update locations
+    set deleted_at = now()
     where
       id = $1 and
-      organisation_id = $2`, [locationId, organisationId]);
+      organisation_id = $2 and
+      deleted_at is null`, [locationId, organisationId]);
 }
 
 module.exports = {

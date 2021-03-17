@@ -47,6 +47,7 @@ const update = async ({
     where
       id = $1 and
       organisation_id = $6 and
+      deleted_at is null and
       exists(
         select 1 from locations
         where
@@ -73,9 +74,11 @@ const getSelectListItems = async (organisationId, client = pool) => {
   const result = await client.query(`
     select 
       id, 
-      abbreviation 
+      abbreviation as name
     from areas 
-    where organisation_id = $1
+    where 
+      organisation_id = $1 and
+      deleted_at is null
     order by abbreviation desc`, [organisationId]);
   return result.rows;
 }
@@ -85,31 +88,40 @@ const find = async (organisationId, client = pool) => {
     select
       a.*,
       l.abbreviation as location_name,
-      sum(case when u.user_id is null then 0 else 1 end) as "active_user_count"
+      sum(case when ua.user_id is null then 0 else 1 end) as active_user_count
     from 
       areas a join
-      locations l on l.id = a.location_id left join
-      user_areas u on a.id = u.area_id and 
-      u.start_time <= now() and
-      (u.end_time is null or u.end_time >= now())
+      locations l on 
+        l.id = a.location_id and
+        l.deleted_at is null left join
+      user_areas ua on 
+        a.id = ua.area_id and
+        ua.start_time <= now() and
+        (ua.end_time is null or ua.end_time >= now()) left join
+      users u on 
+        ua.user_id = u.id and 
+        u.deleted_at is null
     where
-      a.organisation_id = $1
+      a.organisation_id = $1 and
+      a.deleted_at is null
     group by
       a.id,
-      l.abbreviation,
-      u.user_id
+      l.name,
+      l.abbreviation
     order by
-      l.abbreviation asc,
-      a.abbreviation asc`, [organisationId]);
+      l.name asc,
+      a.name asc`, [organisationId]);
   return result.rows;
 }
 
 const remove = async (areaId, organisationId, client = pool) => {
   await client.query(`
-    delete from areas
+    update areas
+    set deleted_at = now()
     where
       id = $1 and
-      organisation_id = $2`, [areaId, organisationId]);
+      organisation_id = $2 and
+      deleted_at is null`, [areaId, organisationId]);
 }
 
 module.exports = {

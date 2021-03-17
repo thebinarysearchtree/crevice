@@ -1,5 +1,5 @@
 const pg = require('pg');
-const { Pool } = pg;
+const { Pool, types } = pg;
 const { database: config } = require('../../config');
 
 const handleRowDescription = pg.Query.prototype.handleRowDescription;
@@ -13,6 +13,8 @@ pg.Query.prototype.handleRowDescription = function(msg) {
 }
 
 let pool = null;
+
+types.setTypeParser(20, (value) => parseInt(value, 10));
 
 const getPool = () => {
   if (!pool) {

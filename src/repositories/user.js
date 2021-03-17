@@ -230,33 +230,34 @@ const setEmailToken = async (email, emailToken, client = pool) => {
 }
 
 const getByEmail = async (email, client = pool) => {
-  const promises = [];
-
-  promises.push(client.query(`
-    select r.* 
-    from 
-      users u,
-      user_roles ur,
-      roles r
-    where
-      u.email = $1 and
-      ur.user_id = u.id and
-      ur.role_id = r.id`, [email]));
-
-  promises.push(client.query(`
-    select
-      a.area_id as id,
-      a.role_id as role_id
-    from
-      users u,
-      user_areas a
-    where
-      u.email = $1 and
-      a.user_id = u.id and
-      a.start_time <= now() and
-      (a.end_time is null or a.end_time > now())`, [email]));
-      
-  promises.push(client.query(`
+  const result = await client.query(`
+    with role_result as (
+      select
+        $1 as email,
+        json_agg(json_build_object('id', r.id)) as roles
+      from 
+        users u,
+        user_roles ur,
+        roles r
+      where
+        u.email = $1 and
+        ur.user_id = u.id and
+        ur.role_id = r.id and
+        r.deleted_at is null),
+    area_result as (
+      select
+        $1 as email,
+        json_agg(json_build_object(
+          'id', a.area_id, 
+          'roleId', a.role_id)) as areas
+      from
+        users u,
+        user_areas a
+      where
+        u.email = $1 and
+        a.user_id = u.id and
+        a.start_time <= now() and
+        (a.end_time is null or a.end_time > now()))
     select 
       u.id,
       u.first_name,
@@ -268,21 +269,23 @@ const getByEmail = async (email, client = pool) => {
       u.is_disabled,
       u.is_verified,
       u.failed_password_attempts,
-      o.organisation_id
+      o.organisation_id,
+      case when r.roles is null then json_build_array() else r.roles end as roles,
+      case when a.areas is null then json_build_array() else a.areas end as areas
     from 
-      users u,
-      user_organisations o
+      users u join
+      user_organisations o on u.id = o.user_id
+      left join
+      role_result r on u.email = r.email
+      left join
+      area_result a on u.email = a.email
     where
       u.email = $1 and
-      u.id = o.user_id and
-      o.is_default`, [email]));
-  const results = await Promise.all(promises);
-
-  const user = results[2].rows[0];
-  user.roles = results[0].rows;
-  user.areas = results[1].rows;
-
-  return user;
+      u.is_disabled is false and
+      u.is_verified is true and
+      u.deleted_at is null and
+      o.is_default`, [email]);
+  return result.rows[0];
 }
 
 const getTasks = async (organisationId, client = pool) => {
@@ -328,13 +331,11 @@ const changePasswordWithToken = async (userId, emailToken, hash, client = pool) 
 }
 
 const find = async ({
-  term,
+  searchTerm,
   roleId,
   areaId,
   activeDate,
-  orderBy,
-  order,
-  page
+  lastUserId
 }, organisationId, client = pool) => {
   const params = [organisationId];
 
@@ -342,16 +343,12 @@ const find = async ({
   const from = [];
   const where = [];
 
-  let orderClause = 'order by u.last_name asc';
-
   const limit = 10;
-  const offset = page * limit;
   params.push(limit);
-  params.push(offset);
 
-  if (term) {
-    params.push(`%${term}%`);
-    where.push(`and name ilike $${params.length}`);
+  if (searchTerm) {
+    params.push(`%${searchTerm}%`);
+    where.push(`and concat_ws(' ', u.first_name, u.last_name) ilike $${params.length}`);
   }
   if (roleId !== -1) {
     params.push(roleId);
@@ -360,7 +357,7 @@ const find = async ({
   }
   if (areaId !== -1) {
     params.push(areaId);
-    from.push('left join user_areas ua on ua.user_id = u.id');
+    from.push('join user_areas ua on ua.user_id = u.id');
     where.push(`and ua.area_id = $${params.length}`);
     if (activeDate) {
       params.push(activeDate);
@@ -370,40 +367,77 @@ const find = async ({
       where.push(`and ua.start_time <= now() and (ua.end_time is null or ua.end_time >= now())`);
     }
   }
-  if (orderBy) {
-    if (order === 'asc') {
-      orderClause = 'order by u.id asc';
-    }
-    else {
-      orderClause = 'order by u.id desc';
-    }
-  }
-  if (page === 0) {
+  if (lastUserId === -1) {
     select.push('count(*) over() as total_count,');
   }
+  else {
+    params.push(lastUserId);
+    where.push(`and u.id < $${params.length}`);
+  }
   const result = await client.query(`
+    with user_result as (
+      select
+        u.id,
+        concat_ws(' ', u.first_name, u.last_name) as name,
+        ${select.join('')}
+        u.created_at
+      from
+        users u join
+        user_organisations uo on uo.user_id = u.id
+        ${from.join(' ')}
+      where
+        uo.organisation_id = $1 and
+        u.deleted_at is null
+        ${where.join(' ')}
+      order by u.id desc
+      limit $2),
+    role_result as (
+      select
+        ur.user_id,
+        json_agg(r.id) as roles
+      from
+        user_roles ur join
+        roles r on ur.role_id = r.id
+      where
+        ur.user_id in (select id from user_result) and
+        r.deleted_at is null
+      group by ur.user_id),
+    area_result as (
+      select
+        ua.user_id,
+        json_agg(a.name) as areas
+      from
+        user_areas ua join
+        areas a on ua.area_id = a.id
+      where
+        ua.user_id in (select id from user_result) and
+        a.deleted_at is null
+      group by ua.user_id),
+    shift_result as (
+      select
+        b.user_id,
+        count(*) as booked,
+        sum(case when s.start_time >= now() then 0 else 1 end) as attended
+      from
+        bookings b join
+        shifts s on b.shift_id = s.id
+      where
+        b.user_id in (select id from user_result) and
+        b.cancelled_at is null and
+        s.deleted_at is null
+      group by b.user_id)
     select
-      u.id,
-      concat_ws(' ', u.first_name, u.last_name) as name,
-      u.created_at,
-      ${select.join('')}
-      sum(case when b.id is null then 0 else 1 end) as bookings_count
-      sum(case when b.id is null or s.start_time >= now() then 0 else 1 end) as attended_count
+      u.*,
+      case when r.roles is null then json_build_array() else r.roles end as roles,
+      case when a.areas is null then json_build_array() else a.areas end as areas,
+      case when s.booked is null then 0 else s.booked end as booked,
+      case when s.attended is null then 0 else s.attended end as attended
     from
-      users u join
-      user_organisations uo on uo.user_id = u.id
-      left join
-      bookings b on b.user_id = u.id
-      join
-      shifts s on s.id = b.shift_id
-      ${from.join('')}
-    where
-      uo.organisation_id = $1 and
-      b.cancelled_at is null
-      ${where.join('')}
-    group by u.id
-    ${orderClause}
-    limit $2 offset $3`, params);
+      user_result u left join
+      role_result r on u.id = r.user_id left join
+      area_result a on u.id = a.user_id left join
+      shift_result s on u.id = s.user_id
+    order by u.id desc`, params);
   if (result.rows.length === 0) {
     return {
       users: [],
@@ -411,7 +445,7 @@ const find = async ({
     };
   }
   else {
-    const count = page === 0 ? result.rows[0].totalCount : -1;
+    const count = lastUserId === -1 ? result.rows[0].totalCount : -1;
     return {
       users: result.rows,
       count
@@ -461,19 +495,6 @@ const updateImages = async (images, organisationId, client = pool) => {
       o.organisation_id = $1
     returning email`, [organisationId, ...params]);
   return result.map(r => r.email);
-}
-
-const changeTag = async (userId, tagId, organisationId, client = pool) => {
-  await client.query(`
-    update users
-    set tag_id = $2
-    where
-      id = $1 and
-      ($2 is null or exists(
-        select 1 from tags
-        where
-          id = $2 and
-          organisation_id = $3))`, [userId, tagId, organisationId]);
 }
 
 const resetFailedPasswordAttempts = async (userId, client = pool) => {
@@ -534,17 +555,19 @@ const getPassword = async (userId, client = pool) => {
   return result.rows[0].password;
 }
 
-const deleteById = async (userId, organisationId, client = pool) => {
+const remove = async (userId, organisationId, client = pool) => {
   await client.query(`
-    delete from users 
+    update users
+    set deleted_at = now()
     where 
       id = $1 and
+      deleted_at is null and
+      is_admin is false and
       exists(
         select 1 from user_organisations
         where
           user_id = $1 and
-          organisation_id = $2) and
-      is_admin is false`, [userId, organisationId]);
+          organisation_id = $2)`, [userId, organisationId]);
 }
 
 module.exports = {
@@ -563,12 +586,11 @@ module.exports = {
   update,
   changeImage,
   updateImages,
-  changeTag,
   resetFailedPasswordAttempts,
   incrementFailedPasswordAttempts,
   disable,
   enable,
   verify,
   getPassword,
-  deleteById
+  remove
 };

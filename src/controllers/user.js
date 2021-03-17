@@ -212,15 +212,11 @@ const getToken = async (req, res) => {
   try {
     await client.query('begin');
     const user = await db.users.getByEmail(email, client);
-    if (!user || user.isDisabled || !user.isVerified) {
+    if (!user) {
       await client.query('commit');
       return res.sendStatus(404);
     }
-    const {
-      password: storedPassword,
-      isDisabled,
-      isVerified,
-      ...tokenData } = user;
+    const { password: storedPassword, ...tokenData } = user;
     const result = await bcrypt.compare(suppliedPassword, storedPassword);
     if (result) {
       if (user.failedPasswordAttempts !== 0) {
@@ -256,14 +252,10 @@ const refreshToken = async (req, res) => {
   try {
     const data = jwt.verify(expiredToken, config.key, { ignoreExpiration: true });
     const user = await db.users.getByEmail(data.email);
-    if (!user || user.isDisabled || !user.isVerified) {
+    if (!user) {
       return res.sendStatus(404);
     }
-    const {
-      password,
-      isDisabled,
-      isVerified,
-      ...tokenData } = user;
+    const { password, ...tokenData } = user;
     if (data.refreshToken === user.refreshToken) {
       const { token, expiry } = createToken(tokenData);
       const defaultView = user.roles && user.roles.length > 0 ? user.roles.filter(r => r.isPrimary)[0].defaultView : '';
@@ -341,7 +333,7 @@ const uploadImages = async (req, res) => {
 
 const remove = async (req, res) => {
   const { userId } = req.body;
-  await db.users.deleteById(userId, req.user.organisationId);
+  await db.users.remove(userId, req.user.organisationId);
   return res.sendStatus(200);
 }
 

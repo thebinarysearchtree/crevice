@@ -33,6 +33,7 @@ create table users (
     email_token uuid,
     email_token_expiry timestamptz default now() + interval '7 days',
     created_at timestamptz not null default now(),
+    deleted_at timestamptz,
     is_admin boolean not null,
     is_disabled boolean not null default false,
     is_verified boolean not null default false,
@@ -50,18 +51,6 @@ create table assigned_users (
     unique(user_id, assigned_user_id)
 );
 
-create table booking_followers (
-    id serial primary key,
-    user_id integer not null references users on delete cascade,
-    follower_id integer not null references users on delete cascade,
-    follower_role_id integer not null references roles on delete cascade,
-    start_time timestamptz not null,
-    end_time timestamptz not null,
-    organisation_id integer not null references organisations on delete cascade
-);
-
-create index booking_followers_user_id_index on booking_followers(user_id);
-
 create table user_organisations (
     id serial primary key,
     user_id integer not null references users on delete cascade,
@@ -75,6 +64,7 @@ create table roles (
     name text not null,
     colour text not null,
     created_at timestamptz not null default now(),
+    deleted_at timestamptz,
     organisation_id integer not null references organisations on delete cascade
 );
 
@@ -83,11 +73,23 @@ create index roles_organisation_id_index on roles(organisation_id);
 create table user_roles (
     id serial primary key,
     user_id integer not null references users on delete cascade,
-    role_id integer not null references roles on delete cascade,
+    role_id integer not null references roles,
     organisation_id integer not null references organisations on delete cascade
 );
 
 create index user_roles_user_id_index on user_roles(user_id);
+
+create table booking_followers (
+    id serial primary key,
+    user_id integer not null references users on delete cascade,
+    follower_id integer not null references users on delete cascade,
+    follower_role_id integer not null references roles,
+    start_time timestamptz not null,
+    end_time timestamptz not null,
+    organisation_id integer not null references organisations on delete cascade
+);
+
+create index booking_followers_user_id_index on booking_followers(user_id);
 
 create table files (
     id uuid primary key,
@@ -95,7 +97,7 @@ create table files (
     original_name text not null,
     size_bytes integer not null,
     mime_type text not null,
-    uploaded_by integer references users on delete set null,
+    uploaded_by integer not null references users,
     uploaded_at timestamptz not null default now(),
     organisation_id integer not null references organisations on delete cascade
 );
@@ -118,6 +120,7 @@ create table locations (
     time_zone text not null,
     address text,
     created_at timestamptz not null default now(),
+    deleted_at timestamptz,
     organisation_id integer not null references organisations on delete cascade
 );
 
@@ -130,6 +133,7 @@ create table areas (
     location_id integer not null references locations on delete cascade,
     notes text,
     created_at timestamptz not null default now(),
+    deleted_at timestamptz,
     organisation_id integer not null references organisations on delete cascade
 );
 
@@ -150,7 +154,7 @@ create index placement_groups_organisation_id_index on placement_groups(organisa
 create table placements (
     id serial primary key,
     group_id integer not null references placement_groups on delete cascade,
-    user_id integer references users on delete set null,
+    user_id integer not null references users,
     minutes_required integer,
     organisation_id integer not null references organisations on delete cascade
 );
@@ -217,8 +221,8 @@ create index placement_fields_placement_id_index on placement_fields(placement_i
 create table user_fields (
     id serial primary key,
     user_id integer not null references users on delete cascade,
-    field_id integer not null references fields on delete cascade,
-    field_item_id integer references field_items on delete cascade,
+    field_id integer not null references fields,
+    field_item_id integer references field_items,
     field_value text,
     date_value timestamptz,
     organisation_id integer not null references organisations on delete cascade
@@ -244,7 +248,8 @@ create table templates (
     id serial primary key,
     name text not null,
     created_at timestamptz not null default now(),
-    created_by integer references users on delete set null,
+    created_by integer not null references users,
+    deleted_at timestamptz,
     organisation_id integer not null references organisations on delete cascade
 );
 
@@ -285,6 +290,8 @@ create index area_capacities_area_id_index on area_capacities(area_id);
 create table question_groups (
     id serial primary key,
     name text not null,
+    created_at timestamptz not null default now(),
+    deleted_at timestamptz,
     organisation_id integer not null references organisations on delete cascade
 );
 
@@ -306,16 +313,18 @@ create index template_shifts_template_id_index on template_shifts(template_id);
 
 create table shifts (
     id serial primary key,
-    area_id integer not null references areas on delete cascade,
+    area_id integer not null references areas,
     start_time timestamptz not null,
     end_time timestamptz not null,
     break_minutes integer not null,
     capacity integer,
     notes text,
-    created_by integer references users on delete set null,
     created_at timestamptz not null default now(),
+    created_by integer not null references users,
+    deleted_at timestamptz,
+    deleted_by integer references users,
     requires_approval boolean not null,
-    approved_by integer references users on delete set null,
+    approved_by integer references users,
     question_group_id integer references question_groups on delete set null,
     template_id integer references template_applications on delete set null,
     organisation_id integer not null references organisations on delete cascade
@@ -327,7 +336,7 @@ create table booking_templates (
     id serial primary key,
     name text not null,
     created_at timestamptz not null default now(),
-    created_by integer references users on delete set null,
+    created_by integer not null references users,
     organisation_id integer not null references organisations on delete cascade
 );
 
@@ -346,12 +355,12 @@ create index booking_template_bookings_template_id_index on booking_template_boo
 create table bookings (
     id serial primary key,
     shift_id integer not null references shifts on delete cascade,
-    user_id integer references users on delete set null,
-    role_id integer not null references roles on delete cascade,
+    user_id integer not null references users,
+    role_id integer not null references roles,
     booked_at timestamptz not null default now(),
-    booked_by integer references users on delete set null,
+    booked_by integer not null references users,
     cancelled_at timestamptz,
-    cancelled_by integer references users on delete set null,
+    cancelled_by integer references users,
     cancellation_requested_at timestamptz,
     cancellation_request_reason text,
     template_id integer references booking_templates on delete set null,
@@ -416,7 +425,7 @@ create index shift_prerequisites_shift_index on shift_prerequisites(shift_id);
 create table shift_roles (
     id serial primary key,
     shift_id integer not null references shifts on delete cascade,
-    role_id integer not null references roles on delete cascade,
+    role_id integer not null references roles,
     amount integer not null,
     cancel_before_minutes integer,
     cancel_after_minutes integer,
@@ -518,6 +527,7 @@ create table questions (
         'Numeric')),
     question_order integer not null,
     question text not null,
+    deleted_at timestamptz,
     organisation_id integer not null references organisations on delete cascade
 );
 
@@ -526,7 +536,7 @@ create index questions_group_id_index on questions(group_id);
 create table question_roles (
     id serial primary key,
     question_id integer not null references questions on delete cascade,
-    role_id integer not null references roles on delete cascade,
+    role_id integer not null references roles,
     organisation_id integer not null references organisations on delete cascade
 );
 
@@ -539,6 +549,7 @@ create table options (
     label text not null,
     alert_if_selected boolean not null,
     alert_words text,
+    deleted_at timestamptz,
     organisation_id integer not null references organisations on delete cascade
 );
 
@@ -546,7 +557,7 @@ create index options_question_id_index on options(question_id);
 
 create table answers (
     id serial primary key,
-    booking_id integer not null references bookings on delete cascade,
+    booking_id integer not null references bookings,
     option_id integer not null references options,
     comments text,
     organisation_id integer not null references organisations on delete cascade
