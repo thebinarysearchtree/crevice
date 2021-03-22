@@ -23,7 +23,8 @@ const getById = async (req, res) => {
 }
 
 const getSelectListItems = async (req, res) => {
-  const selectListItems = await db.areas.getSelectListItems(req.user.organisationId);
+  const user = req.user;
+  const selectListItems = await db.areas.getSelectListItems(user.isAdmin, user.id, user.organisationId);
   return res.json(selectListItems);
 }
 

@@ -231,25 +231,13 @@ const setEmailToken = async (email, emailToken, client = pool) => {
 
 const getByEmail = async (email, client = pool) => {
   const result = await client.query(`
-    with role_result as (
-      select
-        $1 as email,
-        json_agg(json_build_object('id', r.id)) as roles
-      from 
-        users u,
-        user_roles ur,
-        roles r
-      where
-        u.email = $1 and
-        ur.user_id = u.id and
-        ur.role_id = r.id and
-        r.deleted_at is null),
-    area_result as (
+    with area_result as (
       select
         $1 as email,
         json_agg(json_build_object(
           'id', a.area_id, 
-          'roleId', a.role_id)) as areas
+          'roleId', a.role_id,
+          'isAdmin', a.is_admin)) as areas
       from
         users u,
         user_areas a
@@ -270,14 +258,10 @@ const getByEmail = async (email, client = pool) => {
       u.is_verified,
       u.failed_password_attempts,
       o.organisation_id,
-      case when r.roles is null then json_build_array() else r.roles end as roles,
       case when a.areas is null then json_build_array() else a.areas end as areas
     from 
       users u join
-      user_organisations o on u.id = o.user_id
-      left join
-      role_result r on u.email = r.email
-      left join
+      user_organisations o on u.id = o.user_id left join
       area_result a on u.email = a.email
     where
       u.email = $1 and
@@ -336,36 +320,38 @@ const find = async ({
   areaId,
   activeDate,
   lastUserId
-}, organisationId, client = pool) => {
+}, isAdmin, areaIds, organisationId, client = pool) => {
   const params = [organisationId];
 
   const select = [];
-  const from = [];
   const where = [];
 
   const limit = 10;
   params.push(limit);
 
+  if (!isAdmin) {
+    let areaIdParams = [];
+    for (const areaId of areaIds) {
+      params.push(areaId);
+      areaIdParams.push(`$${params.length}`);
+    }
+    where.push(`and a.id in (${areaIdParams.join(', ')})`);
+  }
   if (searchTerm) {
     params.push(`%${searchTerm}%`);
     where.push(`and concat_ws(' ', u.first_name, u.last_name) ilike $${params.length}`);
   }
   if (roleId !== -1) {
     params.push(roleId);
-    from.push('join user_roles ur on ur.user_id = u.id');
-    where.push(`and ur.role_id = $${params.length}`);
+    where.push(`and r.id = $${params.length}`);
   }
   if (areaId !== -1) {
     params.push(areaId);
-    from.push('join user_areas ua on ua.user_id = u.id');
-    where.push(`and ua.area_id = $${params.length}`);
-    if (activeDate) {
-      params.push(activeDate);
-      where.push(`and ua.start_time <= $${params.length} and (ua.end_time is null or ua.end_time >= $${params.length})`);
-    }
-    else {
-      where.push(`and ua.start_time <= now() and (ua.end_time is null or ua.end_time >= now())`);
-    }
+    where.push(`and a.id = $${params.length}`);
+  }
+  if (activeDate) {
+    params.push(activeDate);
+    where.push(`and ua.start_time <= $${params.length} and (ua.end_time is null or ua.end_time >= $${params.length})`);
   }
   if (lastUserId === -1) {
     select.push('count(*) over() as total_count,');
@@ -376,43 +362,27 @@ const find = async ({
   }
   const result = await client.query(`
     with user_result as (
-      select
+      select 
         u.id,
         concat_ws(' ', u.first_name, u.last_name) as name,
         ${select.join('')}
-        u.created_at
-      from
-        users u join
+        json_agg(distinct ua.role_id) as roles,
+        json_agg(distinct a.abbreviation) as areas
+      from 
+        user_areas ua join
+        users u on ua.user_id = u.id join
+        areas a on ua.area_id = a.id join
+        roles r on ua.role_id = r.id join
         user_organisations uo on uo.user_id = u.id
-        ${from.join(' ')}
       where
-        uo.organisation_id = $1 and
-        u.deleted_at is null
+        a.deleted_at is null and
+        r.deleted_at is null and
+        u.deleted_at is null and
+        uo.organisation_id = $1
         ${where.join(' ')}
+      group by u.id
       order by u.id desc
       limit $2),
-    role_result as (
-      select
-        ur.user_id,
-        json_agg(r.id) as roles
-      from
-        user_roles ur join
-        roles r on ur.role_id = r.id
-      where
-        ur.user_id in (select id from user_result) and
-        r.deleted_at is null
-      group by ur.user_id),
-    area_result as (
-      select
-        ua.user_id,
-        json_agg(a.name) as areas
-      from
-        user_areas ua join
-        areas a on ua.area_id = a.id
-      where
-        ua.user_id in (select id from user_result) and
-        a.deleted_at is null
-      group by ua.user_id),
     shift_result as (
       select
         b.user_id,
@@ -428,14 +398,10 @@ const find = async ({
       group by b.user_id)
     select
       u.*,
-      case when r.roles is null then json_build_array() else r.roles end as roles,
-      case when a.areas is null then json_build_array() else a.areas end as areas,
       case when s.booked is null then 0 else s.booked end as booked,
       case when s.attended is null then 0 else s.attended end as attended
     from
       user_result u left join
-      role_result r on u.id = r.user_id left join
-      area_result a on u.id = a.user_id left join
       shift_result s on u.id = s.user_id
     order by u.id desc`, params);
   if (result.rows.length === 0) {

@@ -299,12 +299,8 @@ const changePassword = async (req, res) => {
 const find = async (req, res) => {
   const query = req.body;
   const user = req.user;
-  if (!user.isAdmin) {
-    if (!user.areas.some(a => a.isAdmin && a.id == query.areaId)) {
-      return res.sendStatus(401);
-    }
-  }
-  const result = await db.users.find(query, user.organisationId);
+  const areaIds = user.isAdmin ? [] : user.areas.filter(a => a.isAdmin).map(a => a.id);
+  const result = await db.users.find(query, user.isAdmin, areaIds, user.organisationId);
   return res.json(result);
 }
 

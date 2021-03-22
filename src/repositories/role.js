@@ -59,13 +59,10 @@ const find = async (organisationId, client = pool) => {
   const result = await client.query(`
     select
       r.*,
-      sum(case when ur.user_id is null then 0 else 1 end) as user_count
+      count(distinct ua.user_id) as user_count
     from 
       roles r left join
-      user_roles ur on r.id = ur.role_id left join
-      users u on 
-        ur.user_id = u.id and 
-        u.deleted_at is null
+      user_areas ua on ua.role_id = r.id
     where r.organisation_id = $1
     group by r.id
     order by r.name asc`, [organisationId]);

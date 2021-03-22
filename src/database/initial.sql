@@ -38,7 +38,9 @@ create table users (
     is_disabled boolean not null default false,
     is_verified boolean not null default false,
     failed_password_attempts integer not null default 0,
-    image_id uuid
+    image_id uuid,
+    phone text,
+    pager text
 );
 
 create table assigned_users (
@@ -69,15 +71,6 @@ create table roles (
 );
 
 create index roles_organisation_id_index on roles(organisation_id);
-
-create table user_roles (
-    id serial primary key,
-    user_id integer not null references users on delete cascade,
-    role_id integer not null references roles,
-    organisation_id integer not null references organisations on delete cascade
-);
-
-create index user_roles_user_id_index on user_roles(user_id);
 
 create table booking_followers (
     id serial primary key,

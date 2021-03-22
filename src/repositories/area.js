@@ -70,16 +70,33 @@ const getById = async (areaId, organisationId, client = pool) => {
   return result.rows[0];
 }
 
-const getSelectListItems = async (organisationId, client = pool) => {
+const getSelectListItems = async (isAdmin, userId, organisationId, client = pool) => {
+  if (isAdmin) {
+    const result = await client.query(`
+      select 
+        id, 
+        abbreviation as name
+      from areas 
+      where 
+        organisation_id = $1 and
+        deleted_at is null
+      order by abbreviation desc`, [organisationId]);
+    return result.rows;
+  }
   const result = await client.query(`
     select 
-      id, 
-      abbreviation as name
-    from areas 
+      a.id, 
+      a.abbreviation as name
+    from
+      user_areas ua join
+      areas a on ua.area_id = a.id 
     where 
-      organisation_id = $1 and
-      deleted_at is null
-    order by abbreviation desc`, [organisationId]);
+      ua.user_id = $1 and
+      ua.organisation_id = $2 and
+      ua.is_admin is true and
+      ua.start_time <= now() and (ua.end_time >= now() or ua.end_time is null) and
+      a.deleted_at is null
+    order by a.abbreviation desc`, [userId, organisationId]);
   return result.rows;
 }
 
@@ -91,9 +108,7 @@ const find = async (organisationId, client = pool) => {
       sum(case when ua.user_id is null then 0 else 1 end) as active_user_count
     from 
       areas a join
-      locations l on 
-        l.id = a.location_id and
-        l.deleted_at is null left join
+      locations l on l.id = a.location_id left join
       user_areas ua on 
         a.id = ua.area_id and
         ua.start_time <= now() and
