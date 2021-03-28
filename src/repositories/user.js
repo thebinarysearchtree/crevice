@@ -361,29 +361,7 @@ const find = async ({
     where.push(`and u.id < $${params.length}`);
   }
   const result = await client.query(`
-    with user_result as (
-      select 
-        u.id,
-        concat_ws(' ', u.first_name, u.last_name) as name,
-        ${select.join('')}
-        json_agg(distinct ua.role_id) as roles,
-        json_agg(distinct a.abbreviation) as areas
-      from 
-        user_areas ua join
-        users u on ua.user_id = u.id join
-        areas a on ua.area_id = a.id join
-        roles r on ua.role_id = r.id join
-        user_organisations uo on uo.user_id = u.id
-      where
-        a.deleted_at is null and
-        r.deleted_at is null and
-        u.deleted_at is null and
-        uo.organisation_id = $1
-        ${where.join(' ')}
-      group by u.id
-      order by u.id desc
-      limit $2),
-    shift_result as (
+    with shift_result as (
       select
         b.user_id,
         count(*) as booked,
@@ -392,18 +370,33 @@ const find = async ({
         bookings b join
         shifts s on b.shift_id = s.id
       where
-        b.user_id in (select id from user_result) and
         b.cancelled_at is null and
         s.deleted_at is null
       group by b.user_id)
-    select
-      u.*,
+    select 
+      u.id,
+      concat_ws(' ', u.first_name, u.last_name) as name,
+      ${select.join('')}
+      json_agg(distinct ua.role_id) as roles,
+      json_agg(distinct a.abbreviation) as areas,
       case when s.booked is null then 0 else s.booked end as booked,
       case when s.attended is null then 0 else s.attended end as attended
-    from
-      user_result u left join
-      shift_result s on u.id = s.user_id
-    order by u.id desc`, params);
+    from 
+      user_areas ua join
+      users u on ua.user_id = u.id join
+      areas a on ua.area_id = a.id join
+      roles r on ua.role_id = r.id join
+      user_organisations uo on uo.user_id = u.id left join
+      shift_result s on s.user_id = u.id
+    where
+      a.deleted_at is null and
+      r.deleted_at is null and
+      u.deleted_at is null and
+      uo.organisation_id = $1
+      ${where.join(' ')}
+    group by u.id, s.booked, s.attended
+    order by u.id desc
+    limit $2`, params);
   if (result.rows.length === 0) {
     return {
       users: [],

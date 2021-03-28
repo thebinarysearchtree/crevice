@@ -6,9 +6,9 @@ const sharp = require('sharp');
 const { parse, unzip } = require('./file');
 
 const files = async (req, res, next) => {
-  const { uploadedFiles } = await parse(req);
+  const { files } = await parse(req);
   const storedFiles = [];
-  for (const file of uploadedFiles) {
+  for (const file of files) {
     const fileId = uuid();
     const extension = path.extname(file.name);
     const filePath = `${config.filesDir}/${fileId}${extension}`;
@@ -26,12 +26,14 @@ const files = async (req, res, next) => {
 }
 
 const photos = async (req, res, next) => {
-  let { uploadedFiles } = await parse(req);
-  if (uploadedFiles.length === 1 && path.extname(uploadedFiles[0].name) === 'zip') {
-    uploadedFiles = await unzip(uploadedFiles[0].path);
+  const photoSize = 320;
+  let { files } = await parse(req);
+  files = [files.photos];
+  if (files.length === 1 && path.extname(files[0].name) === 'zip') {
+    files = await unzip(files[0].path);
   }
   const storedFiles = [];
-  for (const file of uploadedFiles) {
+  for (const file of files) {
     let photo;
     try {
       photo = sharp(file.path);
@@ -42,7 +44,7 @@ const photos = async (req, res, next) => {
     const { width, height, format } = photo.metadata();
     const fileId = uuid();
     const filePath = `${config.photosDir}/${fileId}.jpg`;
-    if (width < 170 || height < 170) {
+    if (width < photoSize || height < photoSize) {
       continue;
     }
     if (width > height) {
@@ -52,8 +54,8 @@ const photos = async (req, res, next) => {
     if (height > width) {
       photo.extract({ left: 0, top: 0, height: width });
     }
-    if (width !== 170 && height !== 170) {
-      photo.resize({ width: 170 });
+    if (width !== photoSize && height !== photoSize) {
+      photo.resize({ width: photoSize });
     }
     if (format !== 'jpeg') {
       photo.toFormat('jpeg');
