@@ -9,7 +9,10 @@ const insert = async ({
   password,
   refreshToken,
   emailToken,
-  isAdmin
+  isAdmin,
+  imageId,
+  phone,
+  pager
 }, client = pool) => {
   const result = await client.query(`
     insert into users(
@@ -19,8 +22,11 @@ const insert = async ({
       password,
       refresh_token,
       email_token,
-      is_admin)
-    values($1, $2, $3, $4, $5, $6, $7)
+      is_admin,
+      image_id,
+      phone,
+      pager)
+    values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     returning id`, [
       firstName,
       lastName,
@@ -28,156 +34,11 @@ const insert = async ({
       password,
       refreshToken,
       emailToken,
-      isAdmin]);
+      isAdmin,
+      imageId,
+      phone,
+      pager]);
   return result.rows[0].id;
-}
-
-const insertUsers = async (users, client) => {
-  const values = users.flatMap(u => {
-    const {
-      firstName,
-      lastName,
-      email,
-      password,
-      refreshToken,
-      emailToken,
-      isAdmin,
-      imageId
-    } = u;
-    return {
-      firstName,
-      lastName,
-      email,
-      password,
-      refreshToken,
-      emailToken,
-      isAdmin,
-      imageId
-    };
-  });
-  const params = users
-    .map((u, i) => `($${(i * 8) + 1}, $${(i * 8) + 2}, $${(i * 8) + 3}, $${(i * 8) + 4}, $${(i * 8) + 5}, $${(i * 8) + 6}, $${(i * 8) + 7}, $${(i * 8) + 8})`)
-    .join(', ');
-  return await client.query(`
-    insert into users(
-      first_name,
-      last_name,
-      email,
-      password,
-      refresh_token,
-      email_token,
-      is_admin,
-      image_id)
-    values${params}
-    returning
-      id,
-      first_name,
-      last_name,
-      email,
-      email_token`, values);
-}
-
-const insertUserOrganisations = async (userIds, organisationId, client) => {
-  const params = userIds.map((v, i) => `($1, $${i + 2})`).join(', ');
-    await client.query(`
-      insert into user_organisations(
-        organisation_id,
-        user_id)
-      values${params}`, [organisationId, ...userIds]);
-}
-
-const validateTags = async (tagIds, organisationId, client) => {
-  const params = tagIds.map((t, i) => `${i + 2}`).join(', ');
-  const result = await client.query(`
-    select count(*) as valid_tags
-    from tags
-    where 
-      id in (${params}) and
-      organisation_id = $1`, [organisationId, ...tagIds]);
-  return result[0].validTags === tagIds.length;
-}
-
-const insertUserTags = async (userIds, tagIds, organisationId, client) => {
-  const userParams = userIds.map((v, i) => `($${i + 2})`).join(', ');
-  const tagParams = tagIds.map((t, i) => `($${i + userIds.length + 2})`).join(', ');
-  await client.query(`
-    insert into user_tags(
-      user_id,
-      tag_id,
-      organisation_id)
-    select 
-      u.id as user_id,
-      t.id as tag_id,
-      $1 as organisation_id
-    from 
-      (values ${userParams}) as u(id),
-      (values ${tagParams}) as t(id)`, [organisationId, ...userIds, ...tagIds]);
-}
-
-const validateRoles = async (roleIds, organisationId, client) => {
-  const params = roleIds.map((r, i) => `${i + 2}`).join(', ');
-  const result = await client.query(`
-    select count(*) as valid_roles
-    from roles
-    where
-      id in (${params}) and
-      organisation_id = $1`, [organisationId, ...roleIds]);
-  return result[0].validRoles === roles.length;
-}
-
-const insertUserRoles = async (userIds, roles, organisationId, client) => {
-  const userParams = userIds
-    .map((v, i) => `($${i + 2})`)
-    .join(', ');
-  const roleParams = roles
-    .map((r, i) => `(${i + userIds.length + 2})`)
-    .join(', ');
-  await client.query(`
-    insert into user_roles(
-      user_id,
-      role_id,
-      organisation_id)
-    select
-      u.id as user_id,
-      r.id as role_id,
-      $1 as organisation_id
-    from
-      (values ${userParams}) as u(id),
-      (values ${roleParams}) as r(id)`, [organisationId, ...userIds, ...roles.map(r => r.id)]);
-}
-
-const insertMany = async (users, tagIds, roles, organisationId) => {
-  if (roles.length === 0) {
-    throw Error();
-  }
-  const client = pool.connect();
-  try {
-    await client.query('begin');
-    const insertedUsers = await insertUsers(users, client);
-    const userIds = insertedUsers.map(r => r.id);
-    await insertUserOrganisations(userId, organisationId, client);
-    if (tagIds.length > 0) {
-      const tagsAreValid = await validateTags(tagIds, organisationId, client);
-      if (!tagsAreValid) {
-        throw Error();
-      }
-      await insertUserTags(userIds, tagIds, organisationId, client);
-    }
-    const roleIds = roles.map(r => r.id);
-    const rolesAreValid = await validateRoles(roleIds, organisationId, client);
-    if (!rolesAreValid) {
-      throw Error();
-    }
-    await insertUserRoles(userIds, roles, organisationId, client);
-    await client.query('commit');
-    return insertedUsers;
-  }
-  catch (e) {
-    await client.query('rollback');
-  }
-  finally {
-    client.release();
-  }
 }
 
 const addOrganisation = async (userId, organisationId, client = pool) => {
@@ -339,7 +200,9 @@ const find = async ({
   }
   if (searchTerm) {
     params.push(`%${searchTerm}%`);
-    where.push(`and concat_ws(' ', u.first_name, u.last_name) ilike $${params.length}`);
+    where.push(`and (
+      concat_ws(' ', u.first_name, u.last_name) ilike $${params.length} or
+      u.email ilike $${params.length})`);
   }
   if (roleId !== -1) {
     params.push(roleId);
@@ -376,9 +239,10 @@ const find = async ({
     select 
       u.id,
       concat_ws(' ', u.first_name, u.last_name) as name,
+      u.image_id,
       ${select.join('')}
-      json_agg(distinct ua.role_id) as roles,
-      json_agg(distinct a.abbreviation) as areas,
+      json_agg(distinct ua.role_id) as role_ids,
+      json_agg(distinct a.abbreviation) as area_names,
       case when s.booked is null then 0 else s.booked end as booked,
       case when s.attended is null then 0 else s.attended end as attended
     from 
@@ -531,7 +395,6 @@ const remove = async (userId, organisationId, client = pool) => {
 
 module.exports = {
   insert,
-  insertMany,
   addOrganisation,
   checkEmailExists,
   getById,

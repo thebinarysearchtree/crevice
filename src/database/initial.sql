@@ -166,7 +166,8 @@ create index placement_files_placement_id_index on placement_files(placement_id)
 
 create table field_groups (
     id serial primary key,
-    label text not null,
+    name text not null,
+    deleted_at timestamptz,
     organisation_id integer not null references organisations on delete cascade
 );
 
@@ -175,7 +176,7 @@ create index field_groups_organisation_id_index on field_groups(organisation_id)
 create table fields (
     id serial primary key,
     group_id integer references field_groups on delete cascade,
-    label text not null,
+    name text not null,
     field_type text not null check (field_type in (
         'SmallText',
         'Text',
@@ -184,6 +185,7 @@ create table fields (
         'Date',
         'Numeric'
     )),
+    deleted_at timestamptz,
     organisation_id integer not null references organisations on delete cascade
 );
 
@@ -193,7 +195,7 @@ create index fields_organisation_id_index on fields(organisation_id);
 create table field_items (
     id serial primary key,
     field_id integer not null references fields on delete cascade,
-    label text not null,
+    name text not null,
     organisation_id integer not null references organisations on delete cascade
 );
 

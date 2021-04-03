@@ -77,7 +77,7 @@ const find = async (organisationId, client = pool) => {
   const result = await client.query(`
     select
       l.*,
-      sum(case when a.id is null then 0 else 1 end) as area_count
+      count(*) filter (where a.id is not null) as area_count
     from 
       locations l left join
       areas a on 
@@ -91,14 +91,31 @@ const find = async (organisationId, client = pool) => {
   return result.rows;
 }
 
-const remove = async (locationId, organisationId, client = pool) => {
-  await client.query(`
-    update locations
-    set deleted_at = now()
-    where
-      id = $1 and
-      organisation_id = $2 and
-      deleted_at is null`, [locationId, organisationId]);
+const remove = async (locationId, organisationId) => {
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+    await client.query(`
+      update locations
+      set deleted_at = now()
+      where
+        id = $1 and
+        organisation_id = $2 and
+        deleted_at is null`, [locationId, organisationId]);
+    await client.query(`
+      update areas
+      set deleted_at = now()
+      where
+        location_id = $1 and
+        organisation_id = $2`, [locationId, organisationId]);
+    await client.query('commit');
+  }
+  catch (e) {
+    await client.query('rollback');
+  }
+  finally {
+    client.release();
+  }
 }
 
 module.exports = {

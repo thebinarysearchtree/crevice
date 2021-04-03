@@ -4,9 +4,35 @@ const path = require('path');
 const { v4: uuid } = require('uuid');
 const sharp = require('sharp');
 const { parse, unzip } = require('./file');
+const parseCSV = require('csv-parse');
+
+const csv = async (req, res, next) => {
+  const { files } = await parse(req);
+  const file = files.csv;
+  const parsedFile = [];
+  const parser = parseCSV();
+  parser.on('readable', () => {
+    let record;
+    while (record = parser.read()) {
+      parsedFiles.push(record);
+    }
+  });
+  parser.on('error', (err) => {
+    console.log(err);
+  });
+  parser.write(file);
+  parser.end();
+  req.csv = parsedFile;
+}
 
 const files = async (req, res, next) => {
   const { files } = await parse(req);
+  if (Array.isArray(files.files)) {
+    files = files.files;
+  }
+  else {
+    files = [files.files];
+  }
   const storedFiles = [];
   for (const file of files) {
     const fileId = uuid();
@@ -28,7 +54,12 @@ const files = async (req, res, next) => {
 const photos = async (req, res, next) => {
   const photoSize = 320;
   let { files } = await parse(req);
-  files = [files.photos];
+  if (Array.isArray(files.photos)) {
+    files = files.photos;
+  }
+  else {
+    files = [files.photos];
+  }
   if (files.length === 1 && path.extname(files[0].name) === 'zip') {
     files = await unzip(files[0].path);
   }
@@ -75,6 +106,7 @@ const photos = async (req, res, next) => {
 }
 
 module.exports = {
+  csv,
   files,
   photos
 };

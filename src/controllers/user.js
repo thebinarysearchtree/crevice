@@ -6,13 +6,15 @@ const config = require('../../config');
 const userRepository = require('../repositories/user');
 const organisationRepository = require('../repositories/organisation');
 const emailTemplateRepository = require('../repositories/emailTemplate');
+const userAreaRepository = require('../repositories/userArea');
 const mailer = require('../services/emailTemplate');
 const populate = require('../database/populate');
 
 const db = {
   users: userRepository,
   organisations: organisationRepository,
-  emailTemplates: emailTemplateRepository
+  emailTemplates: emailTemplateRepository,
+  userAreas: userAreaRepository
 };
 
 const signUp = async (req, res) => {
@@ -100,38 +102,59 @@ const verify = async (req, res) => {
 }
 
 const inviteUsers = async (req, res) => {
-  const { suppliedUsers, tagId, emailTemplateId } = req.body;
+  const { users: suppliedUsers, emailTemplateId } = req.body;
   const organisationId = req.user.organisationId;
   const isAdmin = false;
   const users = [];
+  const errorUsers = [];
+  const client = await getPool().connect();
   for (const suppliedUser of suppliedUsers) {
     const {
       firstName,
       lastName,
       email,
-      imageId } = suppliedUser;
-    if (!firstName || !lastName || !email || !email.includes('@')) {
-      return res.sendStatus(400);
+      imageId,
+      phone,
+      pager,
+      userAreas } = suppliedUser;
+    if (!firstName || !lastName || !email || !email.includes('@') || userAreas.length === 0) {
+      errorUsers.push({ firstName, lastName, email, error: 'validation' });
+      continue;
     }
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash(uuid(), salt);
     const refreshToken = uuid();
     const emailToken = uuid();
 
-    users.push({
+    const user = {
       firstName,
       lastName,
       email,
       password: hash,
       refreshToken,
       emailToken,
-      emailTokenExpiry,
       isAdmin,
-      imageId
-    });
+      imageId,
+      phone,
+      pager
+    };
+    try {
+      await client.query('begin');
+      const userId = await db.users.insert(user, client);
+      await db.users.addOrganisation(userId, organisationId, client);
+      for (const userArea of userAreas) {
+        await db.userAreas.insert({ ...userArea, userId }, organisationId, client);
+      }
+      await client.query('commit');
+      users.push({ ...user, id: userId });
+    }
+    catch (e) {
+      errorUsers.push({ firstName, lastName, email, error: 'database' });
+      await client.query('rollback');
+    }
   }
-  const storedUsers = await db.users.insertMany(users, tagId, organisationId);
-  const emailUsers = storedUsers.map(u => {
+  client.release();
+  const emailUsers = users.map(u => {
     return {
       email: u.email,
       firstName: u.firstName,
@@ -140,7 +163,16 @@ const inviteUsers = async (req, res) => {
     }
   });
   const rejected = await mailer.send('Invite', emailUsers, emailTemplateId, organisationId);
-  return res.json(rejected);
+  const rejectedEmails = new Set(rejected);
+  const rejectedUsers = users
+    .filter(u => rejectedEmails.has(u.email))
+    .map(u => ({ 
+      firstName: u.firstName, 
+      lastName: u.lastName, 
+      email: u.email, 
+      error: 'email' 
+    }));
+  return res.json([...errorUsers, ...rejectedUsers]);
 }
 
 const resendInvitation = async (req, res) => {

@@ -105,7 +105,11 @@ const find = async (organisationId, client = pool) => {
     select
       a.*,
       l.abbreviation as location_name,
-      sum(case when ua.user_id is null then 0 else 1 end) as active_user_count
+      coalesce(json_agg(json_build_object(
+        'id', u.id,
+        'name', concat_ws(' ', u.first_name, u.last_name),
+        'imageId', u.image_id)) filter (where ua.is_admin is true), json_build_array()) as administrators,
+      count(*) filter (where ua.user_id is not null) as active_user_count
     from 
       areas a join
       locations l on l.id = a.location_id left join

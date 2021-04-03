@@ -6,7 +6,7 @@ const db = {
 };
 
 const replaceFields = (placeholders, template) => {
-  const { plaintext, html } = template;
+  let { plaintext, html } = template;
   const pattern = /{.+?}/g;
   const replacer = (placeholder) => {
     const key = placeholder.slice(1, placeholder.length - 1);
