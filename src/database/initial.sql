@@ -178,13 +178,14 @@ create table fields (
     group_id integer references field_groups on delete cascade,
     name text not null,
     field_type text not null check (field_type in (
-        'SmallText',
-        'Text',
-        'Textarea',
+        'Short',
+        'Standard',
+        'Comment',
         'Select',
         'Date',
-        'Numeric'
+        'Number'
     )),
+    field_number integer not null,
     deleted_at timestamptz,
     organisation_id integer not null references organisations on delete cascade
 );
@@ -196,6 +197,7 @@ create table field_items (
     id serial primary key,
     field_id integer not null references fields on delete cascade,
     name text not null,
+    item_number integer not null,
     organisation_id integer not null references organisations on delete cascade
 );
 
@@ -217,8 +219,8 @@ create table user_fields (
     id serial primary key,
     user_id integer not null references users on delete cascade,
     field_id integer not null references fields,
-    field_item_id integer references field_items,
-    field_value text,
+    item_id integer references field_items,
+    text_value text,
     date_value timestamptz,
     organisation_id integer not null references organisations on delete cascade
 );

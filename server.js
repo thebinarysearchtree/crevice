@@ -13,12 +13,14 @@ const roles = require('./src/routes/role');
 const locations = require('./src/routes/location');
 const areas = require('./src/routes/area');
 const files = require('./src/routes/file');
+const fields = require('./src/routes/field');
 
 app.use('/users', users);
 app.use('/roles', roles);
 app.use('/locations', locations);
 app.use('/areas', areas);
 app.use('/files', files);
+app.use('/fields', fields);
 
 const server = app.listen(config.port);
 

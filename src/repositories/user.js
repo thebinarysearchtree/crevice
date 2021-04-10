@@ -119,7 +119,7 @@ const getByEmail = async (email, client = pool) => {
       u.is_verified,
       u.failed_password_attempts,
       o.organisation_id,
-      case when a.areas is null then json_build_array() else a.areas end as areas
+      coalesce(a.areas, json_build_array()) as areas
     from 
       users u join
       user_organisations o on u.id = o.user_id left join
@@ -228,7 +228,7 @@ const find = async ({
       select
         b.user_id,
         count(*) as booked,
-        sum(case when s.start_time >= now() then 0 else 1 end) as attended
+        count(*) filter (where s.start_time <= now()) as attended
       from
         bookings b join
         shifts s on b.shift_id = s.id
@@ -243,8 +243,8 @@ const find = async ({
       ${select.join('')}
       json_agg(distinct ua.role_id) as role_ids,
       json_agg(distinct a.abbreviation) as area_names,
-      case when s.booked is null then 0 else s.booked end as booked,
-      case when s.attended is null then 0 else s.attended end as attended
+      coalesce(s.booked, 0) as booked,
+      coalesce(s.attended, 0) as attended
     from 
       user_areas ua join
       users u on ua.user_id = u.id join

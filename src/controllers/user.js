@@ -7,6 +7,7 @@ const userRepository = require('../repositories/user');
 const organisationRepository = require('../repositories/organisation');
 const emailTemplateRepository = require('../repositories/emailTemplate');
 const userAreaRepository = require('../repositories/userArea');
+const userFieldRepository = require('../repositories/userField');
 const mailer = require('../services/emailTemplate');
 const populate = require('../database/populate');
 
@@ -14,7 +15,8 @@ const db = {
   users: userRepository,
   organisations: organisationRepository,
   emailTemplates: emailTemplateRepository,
-  userAreas: userAreaRepository
+  userAreas: userAreaRepository,
+  userFields: userFieldRepository
 };
 
 const signUp = async (req, res) => {
@@ -116,7 +118,8 @@ const inviteUsers = async (req, res) => {
       imageId,
       phone,
       pager,
-      userAreas } = suppliedUser;
+      userAreas,
+      userFields } = suppliedUser;
     if (!firstName || !lastName || !email || !email.includes('@') || userAreas.length === 0) {
       errorUsers.push({ firstName, lastName, email, error: 'validation' });
       continue;
@@ -144,6 +147,9 @@ const inviteUsers = async (req, res) => {
       await db.users.addOrganisation(userId, organisationId, client);
       for (const userArea of userAreas) {
         await db.userAreas.insert({ ...userArea, userId }, organisationId, client);
+      }
+      for (const userField of userFields) {
+        await db.userFields.insert(userField, userId, organisationId, client);
       }
       await client.query('commit');
       users.push({ ...user, id: userId });
