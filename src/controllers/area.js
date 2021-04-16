@@ -22,6 +22,11 @@ const getById = async (req, res) => {
   return res.json(area);
 }
 
+const getWithLocation = async (req, res) => {
+  const locations = await db.areas.getWithLocation(req.user.organisationId);
+  return res.json(locations);
+}
+
 const getSelectListItems = async (req, res) => {
   const user = req.user;
   const selectListItems = await db.areas.getSelectListItems(user.isAdmin, user.id, user.organisationId);
@@ -43,6 +48,7 @@ module.exports = {
   insert,
   update,
   getById,
+  getWithLocation,
   getSelectListItems,
   find,
   remove

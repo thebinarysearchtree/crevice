@@ -1,4 +1,5 @@
 const getPool = require('../database/db');
+const path = require('path');
 
 const pool = getPool();
 
@@ -180,12 +181,14 @@ const find = async ({
   roleId,
   areaId,
   activeDate,
+  activeState,
   lastUserId
 }, isAdmin, areaIds, organisationId, client = pool) => {
   const params = [organisationId];
 
   const select = [];
   const where = [];
+  let having = '';
 
   const limit = 10;
   params.push(limit);
@@ -215,6 +218,17 @@ const find = async ({
   if (activeDate) {
     params.push(activeDate);
     where.push(`and ua.start_time <= $${params.length} and (ua.end_time is null or ua.end_time >= $${params.length})`);
+  }
+  if (activeState !== 'All') {
+    if (activeState === 'Current') {
+      having = 'having count(*) filter (where ua.start_time <= now() and (ua.end_time is null or ua.end_time >= now())) > 0';
+    }
+    else if (activeState === 'Future') {
+      having = 'having count(*) filter (where ua.start_time > now()) > 0';
+    }
+    else {
+      having = 'having count(*) filter (where ua.start_time < now() and ua.end_time < now()) > 0';
+    }
   }
   if (lastUserId === -1) {
     select.push('count(*) over() as total_count,');
@@ -259,6 +273,7 @@ const find = async ({
       uo.organisation_id = $1
       ${where.join(' ')}
     group by u.id, s.booked, s.attended
+    ${having}
     order by u.id desc
     limit $2`, params);
   if (result.rows.length === 0) {
@@ -299,25 +314,53 @@ const changeImage = async (userId, imageId, organisationId, client = pool) => {
       organisation_id = $3`, [userId, imageId, organisationId]);
 }
 
-const updateImages = async (images, organisationId, client = pool) => {
-  const values = images
-    .map((f, i) => `(${(i * 2) + 2}, ${(i * 2) + 3})`)
-    .join(', ');
-  const params = images.flatMap(i => [i.email, i.imageId]);
-  const result = await client.query(`
-    update users
-    set image_id = i.image_id
-    from
-      (values ${values}) as i(email, image_id),
-      users u,
-      user_organisations o
-    where
-      email = i.email and
-      u.email = i.email and
-      o.user_id = u.id and
-      o.organisation_id = $1
-    returning email`, [organisationId, ...params]);
-  return result.map(r => r.email);
+const updateImages = async ({
+  files,
+  fieldName,
+  overwrite
+}, organisationId, client = pool) => {
+  const isUserField = ['Email', 'Phone'].includes(fieldName);
+  const where = overwrite ? '' : ' and u.image_id is null';
+  const errors = [];
+  for (const file of files) {
+    const { fileId, originalName } = file;
+    const fieldValue = path.parse(originalName).name;
+    if (isUserField) {
+      const result = await client.query(`
+        update users u
+        set image_id = $1
+        from user_organisations uo
+        where
+          uo.user_id = u.id and
+          uo.organisation_id = $3 and
+          u.${fieldName} = $2
+          ${where}`, [fileId, fieldValue, organisationId]);
+      if (result.rowCount === 0) {
+        errors.push(originalName);
+      }
+    }
+    else {
+      const result = await client.query(`
+        update users u
+        set image_id = $1
+        from 
+          user_organisations uo,
+          user_fields uf,
+          fields f
+        where
+          uo.user_id = u.id and
+          uf.user_id = u.id and
+          uf.field_id = f.id and
+          uo.organisation_id = $4 and
+          f.name = $2 and
+          uf.text_value = $3
+          ${where}`, [fileId, fieldName, fieldValue, organisationId]);
+      if (result.rowCount === 0) {
+        errors.push(originalName);
+      }
+    }
+  }
+  return errors;
 }
 
 const resetFailedPasswordAttempts = async (userId, client = pool) => {

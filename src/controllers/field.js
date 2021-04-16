@@ -73,6 +73,11 @@ const getById = async (req, res) => {
   return res.json(fields);
 }
 
+const getFilenameFields = async (req, res) => {
+  const fields = await db.fields.getFilenameFields(req.user.organisationId);
+  return res.json(fields);
+}
+
 const getAllFields = async (req, res) => {
   const fields = await db.fields.getAllFields(req.user.organisationId);
   return res.json(fields);
@@ -89,8 +94,15 @@ const find = async (req, res) => {
 }
 
 const remove = async (req, res) => {
-  const { fieldId } = req.body;
-  await db.fields.remove(fieldId, req.user.organisationId);
+  const { fieldId, fieldType } = req.body;
+  const organisationId = req.user.organisationId;
+  
+  if (fieldType === 'Multiple fields') {
+    await db.fields.removeGroup(fieldId, organisationId);
+  }
+  else {
+    await db.fields.remove(fieldId, organisationId);
+  }
   return res.sendStatus(200);
 }
 
@@ -106,6 +118,7 @@ module.exports = {
   update,
   updateGroup,
   getById,
+  getFilenameFields,
   getAllFields,
   getSelectListItems,
   find,

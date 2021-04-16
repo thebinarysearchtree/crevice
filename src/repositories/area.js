@@ -70,6 +70,25 @@ const getById = async (areaId, organisationId, client = pool) => {
   return result.rows[0];
 }
 
+const getWithLocation = async (organisationId, client = pool) => {
+  const result =  await client.query(`
+    select
+      l.name,
+      json_agg(json_build_object(
+        'id', a.id,
+        'name', a.name,
+        'abbreviation', a.abbreviation) order by a.abbreviation asc) as areas
+    from
+      areas a join
+      locations l on a.location_id = l.id
+    where
+      a.organisation_id = $1 and
+      a.deleted_at is null
+    group by l.id
+    order by l.name asc`, [organisationId]);
+  return result.rows;
+}
+
 const getSelectListItems = async (isAdmin, userId, organisationId, client = pool) => {
   if (isAdmin) {
     const result = await client.query(`
@@ -147,6 +166,7 @@ module.exports = {
   insert,
   update,
   getById,
+  getWithLocation,
   getSelectListItems,
   find,
   remove

@@ -22,7 +22,7 @@ router.post('/find', auth, wrap(userController.find));
 router.post('/update', auth, wrap(userController.update));
 router.post('/remove', [auth, admin], wrap(userController.remove));
 
-router.post('/changeImage', [auth, admin, photos], wrap(userController.changeImage));
-router.post('/uploadImages', [auth, admin, photos], wrap(userController.uploadImages));
+router.post('/changeImage', [auth, admin], wrap(userController.changeImage));
+router.post('/updateImages', [auth, admin], wrap(userController.updateImages));
 
 module.exports = router;

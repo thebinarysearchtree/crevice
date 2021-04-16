@@ -91,12 +91,22 @@ const getById = async (fieldId, fieldType, organisationId, client = pool) => {
   return result.rows;
 }
 
+const getFilenameFields = async (organisationId, client = pool) => {
+  const result = await client.query(`
+    select name
+    from fields
+    where
+      organisation_id = $1 and
+      field_type in ('Short', 'Standard', 'Number') and
+      deleted_at is null`, [organisationId]);
+  return result.rows.map(f => f.name);
+}
+
 const getAllFields = async (organisationId, client = pool) => {
   const result = await client.query(`
     with field_result as (
       select 
         f.*,
-        case when f.field_type = 'Date' then null else '' end as value,
         json_agg(json_build_object('id', i.id, 'name', i.name) order by i.item_number asc) as select_items
       from 
         fields f left join
@@ -231,6 +241,7 @@ module.exports = {
   update,
   updateGroup,
   getById,
+  getFilenameFields,
   getAllFields,
   getSelectListItems,
   find,

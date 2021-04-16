@@ -354,15 +354,10 @@ const changeImage = async (req, res) => {
   await db.users.changeImage(userId, imageId, req.user.organisationId);
 }
 
-const uploadImages = async (req, res) => {
-  const images = req.files.map(f => {
-    return {
-      email: f.originalName,
-      imageId: f.fileId
-    };
-  });
-  const accepted = await db.users.updateImages(images, req.user.organisationId);
-  return res.json(accepted);
+const updateImages = async (req, res) => {
+  const query = req.body;
+  const rejectedFilenames = await db.users.updateImages(query, req.user.organisationId);
+  return res.json(rejectedFilenames);
 }
 
 const remove = async (req, res) => {
@@ -385,6 +380,6 @@ module.exports = {
   find,
   update,
   changeImage,
-  uploadImages,
+  updateImages,
   remove
 };

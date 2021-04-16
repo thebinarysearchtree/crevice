@@ -11,6 +11,7 @@ router.post('/insertGroup', [auth, admin], wrap(fieldController.insertGroup));
 router.post('/update', [auth, admin], wrap(fieldController.update));
 router.post('/updateGroup', [auth, admin], wrap(fieldController.updateGroup));
 router.post('/getById', [auth, admin], wrap(fieldController.getById));
+router.post('/getFilenameFields', [auth, admin], wrap(fieldController.getFilenameFields));
 router.post('/getAllFields', [auth, admin], wrap(fieldController.getAllFields));
 router.post('/getSelectListItems', [auth, admin], wrap(fieldController.getSelectListItems));
 router.post('/find', [auth, admin], wrap(fieldController.find));
