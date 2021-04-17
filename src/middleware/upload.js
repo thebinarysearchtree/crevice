@@ -70,12 +70,20 @@ const photos = async (req, res, next) => {
       photo = sharp(file.path);
     }
     catch (e) {
+      storedFiles.push({
+        originalName: file.name,
+        error: `Could not open file`
+      });
       continue;
     }
     const { width, height, format } = photo.metadata();
     const fileId = uuid();
     const filePath = `${config.photosDir}/${fileId}.jpg`;
     if (width < photoSize || height < photoSize) {
+      storedFiles.push({
+        originalName: file.name,
+        error: `Photo must be at least ${photoSize} x ${photoSize} pixels`
+      });
       continue;
     }
     if (width > height) {

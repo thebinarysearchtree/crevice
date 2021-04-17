@@ -325,8 +325,9 @@ const updateImages = async ({
   for (const file of files) {
     const { fileId, originalName } = file;
     const fieldValue = path.parse(originalName).name;
+    let result;
     if (isUserField) {
-      const result = await client.query(`
+      result = await client.query(`
         update users u
         set image_id = $1
         from user_organisations uo
@@ -335,12 +336,9 @@ const updateImages = async ({
           uo.organisation_id = $3 and
           u.${fieldName} = $2
           ${where}`, [fileId, fieldValue, organisationId]);
-      if (result.rowCount === 0) {
-        errors.push(originalName);
-      }
     }
     else {
-      const result = await client.query(`
+      result = await client.query(`
         update users u
         set image_id = $1
         from 
@@ -355,9 +353,13 @@ const updateImages = async ({
           f.name = $2 and
           uf.text_value = $3
           ${where}`, [fileId, fieldName, fieldValue, organisationId]);
-      if (result.rowCount === 0) {
-        errors.push(originalName);
-      }
+    }
+    if (result.rowCount === 0) {
+      const error = overwrite ? 'No matching user found' : 'No matching user found or user already has a profile photo';
+      errors.push({
+        originalName,
+        error
+      });
     }
   }
   return errors;
