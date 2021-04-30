@@ -134,6 +134,33 @@ const getByEmail = async (email, client = pool) => {
   return result.rows[0];
 }
 
+const getUserDetails = async (userId, organisationId, client = pool) => {
+  const result = await client.query(`
+    select
+      ws_concat(' ', u.first_name, u.last_name) as name,
+      u.email,
+      u.phone,
+      u.pager,
+      json_agg(build_json_object(
+        'fieldName', f.name,
+        'itemName', fi.name,
+        'textValue', uf.text_value,
+        'dateValue', uf.date_value) order by f.field_number asc) as fields
+    from
+      users u join
+      user_organisations uo on 
+        uo.user_id = u.id and 
+        uo.organisation_id = $2 left join
+      user_fields uf on uf.user_id = u.id join
+      fields f on uf.field_id = f.id left join
+      field_items fi on uf.item_id = fi.id
+    where
+      u.id = $1 and
+      f.deleted_at is null
+    group by u.id`, [userId, organisationId]);
+  const user = result.rows[0];
+}
+
 const getTasks = async (organisationId, client = pool) => {
   const result = await client.query(`
     select 
@@ -291,29 +318,6 @@ const find = async ({
   }
 }
 
-const update = async ({
-  firstName,
-  lastName,
-  email
-}, userId, client = pool) => {
-  await client.query(`
-    update users 
-    set 
-      first_name = $1,
-      last_name = $2,
-      email = $3
-    where id = $4`, [firstName, lastName, email, userId]);
-}
-
-const changeImage = async (userId, imageId, organisationId, client = pool) => {
-  await client.query(`
-    update users
-    set image_id = $2
-    where 
-      id = $1 and
-      organisation_id = $3`, [userId, imageId, organisationId]);
-}
-
 const updateImages = async ({
   files,
   fieldName,
@@ -450,8 +454,6 @@ module.exports = {
   changePassword,
   changePasswordWithToken,
   find,
-  update,
-  changeImage,
   updateImages,
   resetFailedPasswordAttempts,
   incrementFailedPasswordAttempts,

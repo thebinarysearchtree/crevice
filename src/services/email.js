@@ -4,7 +4,10 @@ const { email, environment } = require('../../config');
 let transport;
 if (environment === 'test') {
   transport = {
-    sendMail: (m) => console.log(m)
+    sendMail: (m) => {
+      console.log(m);
+      return [];
+    }
   }
 }
 else {
@@ -33,7 +36,8 @@ const send = async ({
     html
   };
   try {
-    await transport.sendMail(message);
+    const info = await transport.sendMail(message);
+    return info.rejected;
   }
   catch (e) {
     console.log(e);

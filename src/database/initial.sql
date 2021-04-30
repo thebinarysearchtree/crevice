@@ -125,6 +125,7 @@ create table areas (
     abbreviation text not null,
     location_id integer not null references locations on delete cascade,
     notes text,
+    address text,
     created_at timestamptz not null default now(),
     deleted_at timestamptz,
     organisation_id integer not null references organisations on delete cascade
@@ -164,18 +165,8 @@ create table placement_files (
 
 create index placement_files_placement_id_index on placement_files(placement_id);
 
-create table field_groups (
-    id serial primary key,
-    name text not null,
-    deleted_at timestamptz,
-    organisation_id integer not null references organisations on delete cascade
-);
-
-create index field_groups_organisation_id_index on field_groups(organisation_id);
-
 create table fields (
     id serial primary key,
-    group_id integer references field_groups on delete cascade,
     name text not null,
     field_type text not null check (field_type in (
         'Short',
@@ -190,7 +181,6 @@ create table fields (
     organisation_id integer not null references organisations on delete cascade
 );
 
-create index fields_group_id_index on fields(group_id);
 create index fields_organisation_id_index on fields(organisation_id);
 
 create table field_items (
@@ -198,6 +188,7 @@ create table field_items (
     field_id integer not null references fields on delete cascade,
     name text not null,
     item_number integer not null,
+    deleted_at timestamptz,
     organisation_id integer not null references organisations on delete cascade
 );
 

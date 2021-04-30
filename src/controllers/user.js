@@ -8,15 +8,22 @@ const organisationRepository = require('../repositories/organisation');
 const emailTemplateRepository = require('../repositories/emailTemplate');
 const userAreaRepository = require('../repositories/userArea');
 const userFieldRepository = require('../repositories/userField');
+const fileRepository = require('../repositories/file');
+const fieldRepository = require('../repositories/field');
 const mailer = require('../services/emailTemplate');
 const populate = require('../database/populate');
+const parseCSV = require('csv-parse');
+const fs = require('fs').promises;
+const { validate: uuidValidate } = require('uuid');
 
 const db = {
   users: userRepository,
   organisations: organisationRepository,
   emailTemplates: emailTemplateRepository,
   userAreas: userAreaRepository,
-  userFields: userFieldRepository
+  userFields: userFieldRepository,
+  files: fileRepository,
+  fields: fieldRepository
 };
 
 const signUp = async (req, res) => {
@@ -103,8 +110,149 @@ const verify = async (req, res) => {
   }
 }
 
+const parse = (content) => {
+  const records = [];
+  const parser = parseCSV();
+  parser.on('readable', () => {
+    let record;
+    while (record = parser.read()) {
+      records.push(record);
+    }
+  });
+  parser.on('error', (err) => {
+    throw err;
+  });
+  parser.write(content);
+  parser.end();
+
+  return records;
+}
+
+const transformCsv = async (fileInfo, userAreas, organisationId) => {
+  const file = await db.files.getById(fileInfo.fileId, organisationId);
+  const content = await fs.readFile(`${config.upload.filesDir}/${file.filename}`);
+  let records;
+  try {
+    records = parse(content);
+  }
+  catch (e) {
+    throw new Error('Invalid csv file');
+  }
+  const header = records[0];
+  const requiredFieldNames = ['First name', 'Last name', 'Email'];
+  for (const field of requiredFieldNames) {
+    if (!header.includes(field)) {
+      throw new Error(`The header is missing ${field}`);
+    }
+  }
+  const optionalFieldNames = ['Phone', 'Pager'];
+  const customFields = await db.fields.getCsvFields(organisationId);
+  const customFieldNames = customFields.map(f => f.name);
+  const allFields = [...requiredFieldNames, ...optionalFieldNames, ...customFieldNames];
+  for (const column of header) {
+    if (!allFields.includes(column)) {
+      throw new Error(`${column} is not a valid field name`);
+    }
+  }
+  const requiredFields = [];
+  const optionalFields = [];
+  const includedCustomFields = [];
+  const displayNameMap = {
+    'First name': 'firstName',
+    'Last name': 'lastName',
+    'Email': 'email',
+    'Phone': 'phone',
+    'Pager': 'pager'
+  };
+  for (const field of requiredFieldNames) {
+    const index = header.indexOf(field);
+    const name = displayNameMap[field];
+    requiredFields.push({ name, index });
+  }
+  for (const field of optionalFieldNames) {
+    const index = header.indexOf(field);
+    if (index !== -1) {
+      const name = displayNameMap[field];
+      optionalFields.push({ name, index });
+    }
+  }
+  for (const field of customFields) {
+    const index = header.indexOf(field.name);
+    if (index !== -1) {
+      includedCustomFields.push({ field, index });
+    }
+  }
+  const users = [];
+  const rows = records.slice(1);
+  let i = 1;
+  for (const row of rows) {
+    const user = {
+      firstName: null,
+      lastName: null,
+      email: null,
+      phone: null,
+      pager: null,
+      userAreas,
+      userFields: []
+    };
+    for (const field of requiredFields) {
+      const value = row[field.index];
+      if (!value) {
+        throw new Error(`Row ${i} is missing a value for the ${field.name} field`);
+      }
+      user[field.name] = value;
+    }
+    for (const field of optionalFields) {
+      const value = row[field.index];
+      user[field.name] = value;
+    }
+    for (const field of includedCustomFields) {
+      const { field: fieldInfo, index } = field;
+      const { id: fieldId, name: fieldName, fieldType, selectItems } = fieldInfo;
+      const value = row[index];
+      if (value) {
+        if (fieldType === 'Select') {
+          const selectItem = selectItems.find(item => item.name === value);
+          if (!selectItem) {
+            throw new Error(`Invalid value for the ${fieldName} field on row ${i}`);
+          }
+          user.userFields.push({
+            fieldId,
+            itemId: selectItem.id,
+            textValue: null,
+            dateValue: null
+          });
+        }
+        else {
+          user.userFields.push({
+            fieldId,
+            itemId: null,
+            textValue: value,
+            dateValue: null
+          });
+        }
+      }
+    }
+    users.push(user);
+    i++;
+  }
+  return users;
+}
+
 const inviteUsers = async (req, res) => {
-  const { users: suppliedUsers, emailTemplateId } = req.body;
+  let { 
+    users: suppliedUsers,
+    fileInfo,
+    userAreas,
+    emailTemplateId } = req.body;
+  if (fileInfo) {
+    try {
+      suppliedUsers = await transformCsv(fileInfo, userAreas, req.user.organisationId);
+    }
+    catch (e) {
+      return res.json([{ type: 'parse', message: e.message }]);
+    }
+  }
   const organisationId = req.user.organisationId;
   const isAdmin = false;
   const users = [];
@@ -121,7 +269,10 @@ const inviteUsers = async (req, res) => {
       userAreas,
       userFields } = suppliedUser;
     if (!firstName || !lastName || !email || !email.includes('@') || userAreas.length === 0) {
-      errorUsers.push({ firstName, lastName, email, error: 'validation' });
+      errorUsers.push({ 
+        type: 'validation', 
+        message: `The user ${firstName} ${lastName} with email ${email} is missing a required field or has no areas` 
+      });
       continue;
     }
     const salt = await bcrypt.genSalt(10);
@@ -155,7 +306,10 @@ const inviteUsers = async (req, res) => {
       users.push({ ...user, id: userId });
     }
     catch (e) {
-      errorUsers.push({ firstName, lastName, email, error: 'database' });
+      errorUsers.push({ 
+        type: 'database', 
+        message: `Could not insert user ${firstName} ${lastName} with email ${email}` 
+      });
       await client.query('rollback');
     }
   }
@@ -172,11 +326,9 @@ const inviteUsers = async (req, res) => {
   const rejectedEmails = new Set(rejected);
   const rejectedUsers = users
     .filter(u => rejectedEmails.has(u.email))
-    .map(u => ({ 
-      firstName: u.firstName, 
-      lastName: u.lastName, 
-      email: u.email, 
-      error: 'email' 
+    .map(u => ({
+      type: 'email',
+      message: `Failed trying to send an email to ${u.email}`
     }));
   return res.json([...errorUsers, ...rejectedUsers]);
 }
@@ -342,12 +494,6 @@ const find = async (req, res) => {
   return res.json(result);
 }
 
-const update = async (req, res) => {
-  const user = req.body;
-  await db.users.update(user, req.user.id);
-  return res.sendStatus(200);
-}
-
 const changeImage = async (req, res) => {
   const userId = req.params.userId;
   const imageId = req.files[0].fileId;
@@ -378,7 +524,6 @@ module.exports = {
   refreshToken,
   changePassword,
   find,
-  update,
   changeImage,
   updateImages,
   remove

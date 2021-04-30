@@ -1,30 +1,18 @@
 const getPool = require('../database/db');
 const fieldRepository = require('../repositories/field');
+const fieldItemRepository = require('../repositories/fieldItem');
 
 const db = {
-  fields: fieldRepository
+  fields: fieldRepository,
+  fieldItems: fieldItemRepository
 };
 
 const insertSelect = async (field, organisationId, client) => {
   const fieldId = await db.fields.insert(field, organisationId, client);
   for (const item of field.selectItems) {
     const { name, itemNumber } = item;
-    await db.fields.insertSelectItem({ fieldId, name, itemNumber }, organisationId, client);
+    await db.fieldItems.insert({ fieldId, name, itemNumber }, organisationId, client);
   }
-}
-
-const insertGroup = async (fieldGroup, organisationId, client) => {
-  const { name, fields } = fieldGroup;
-  const groupId = await db.fields.insertGroup(name, organisationId, client);
-  for (const field of fields) {
-    if (field.fieldType === 'Select') {
-      await insertSelect({...field, groupId }, organisationId)
-    }
-    else {
-      await db.fields.insert({...field, groupId }, organisationId, client);
-    }
-  }
-  return groupId;
 }
 
 const insert = async (req, res) => {
@@ -36,9 +24,6 @@ const insert = async (req, res) => {
     await client.query('begin');
     if (fieldType === 'Select') {
       await insertSelect(field, organisationId, client);
-    }
-    else if (fieldType === 'Multiple fields') {
-      await insertGroup(field, organisationId, client);
     }
     else {
       await db.fields.insert(field, organisationId, client);
@@ -56,25 +41,63 @@ const insert = async (req, res) => {
 }
 
 const update = async (req, res) => {
-  const field = req.body;
-  await db.fields.update(field, req.user.organisationId);
+  const { fieldId, name, existingName, itemsToDelete, itemsToAdd, itemsToUpdate } = req.body;
+  const organisationId = req.user.organisationId;
+  const client = await getPool().connect();
+  try {
+    await client.query('begin');
+    const field = await db.fields.getById(fieldId, organisationId, client);
+    if (name !== existingName) {
+      await db.fields.update(fieldId, name, organisationId, client);
+    }
+    if (field.fieldType === 'Select') {
+      const existingItemIds = field.selectItems.map(i => i.id);
+      for (const item of itemsToDelete) {
+        if (existingItemIds.includes(item.id)) {
+          await db.fieldItems.remove(item.id, organisationId, client);
+        }
+      }
+      for (const item of itemsToAdd) {
+        await db.fieldItems.insert({...item, fieldId }, organisationId, client);
+      }
+      for (const item of itemsToUpdate) {
+        if (existingItemIds.includes(item.id)) {
+          await db.fieldItems.update(item, organisationId, client);
+        }
+      }
+    }
+    await client.query('commit');
+  }
+  catch (e) {
+    await client.query('rollback');
+    return res.sendStatus(500);
+  }
+  finally {
+    client.release();
+  }
+
   return res.sendStatus(200);
 }
 
-const updateGroup = async (req, res) => {
-  const fieldGroup = req.body;
-  await db.fields.updateGroup(fieldGroup, req.user.organisationId);
+const moveUp = async (req, res) => {
+  const { fieldId } = req.body;
+  await db.fields.moveUp(fieldId, req.user.organisationId);
   return res.sendStatus(200);
 }
 
 const getById = async (req, res) => {
-  const { fieldId, fieldType } = req.body;
-  const fields = await db.fields.getById(fieldId, fieldType, req.user.organisationId);
-  return res.json(fields);
+  const { fieldId } = req.body;
+  const field = await db.fields.getById(fieldId, req.user.organisationId);
+  return res.json(field);
 }
 
 const getFilenameFields = async (req, res) => {
   const fields = await db.fields.getFilenameFields(req.user.organisationId);
+  return res.json(fields);
+}
+
+const getCsvFields = async (req, res) => {
+  const fields = await db.fields.getCsvFields(req.user.organisationId);
   return res.json(fields);
 }
 
@@ -94,34 +117,20 @@ const find = async (req, res) => {
 }
 
 const remove = async (req, res) => {
-  const { fieldId, fieldType } = req.body;
-  const organisationId = req.user.organisationId;
-  
-  if (fieldType === 'Multiple fields') {
-    await db.fields.removeGroup(fieldId, organisationId);
-  }
-  else {
-    await db.fields.remove(fieldId, organisationId);
-  }
-  return res.sendStatus(200);
-}
-
-const removeGroup = async (req, res) => {
-  const { fieldGroupId } = req.body;
-  await db.fields.removeGroup(fieldGroupId, req.user.organisationId);
+  const { fieldId } = req.body;
+  await db.fields.remove(fieldId, req.user.organisationId);
   return res.sendStatus(200);
 }
 
 module.exports = {
   insert,
-  insertGroup,
   update,
-  updateGroup,
+  moveUp,
   getById,
   getFilenameFields,
+  getCsvFields,
   getAllFields,
   getSelectListItems,
   find,
-  remove,
-  removeGroup
+  remove
 };
