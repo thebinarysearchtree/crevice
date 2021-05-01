@@ -296,12 +296,16 @@ const inviteUsers = async (req, res) => {
       await client.query('begin');
       const userId = await db.users.insert(user, client);
       await db.users.addOrganisation(userId, organisationId, client);
+      const promises = [];
       for (const userArea of userAreas) {
-        await db.userAreas.insert({ ...userArea, userId }, organisationId, client);
+        const promise = db.userAreas.insert({ ...userArea, userId }, organisationId, client);
+        promises.push(promise);
       }
       for (const userField of userFields) {
-        await db.userFields.insert(userField, userId, organisationId, client);
+        const promise = db.userFields.insert(userField, userId, organisationId, client);
+        promises.push(promise);
       }
+      await Promise.all(promises);
       await client.query('commit');
       users.push({ ...user, id: userId });
     }
@@ -501,9 +505,50 @@ const changeImage = async (req, res) => {
 }
 
 const updateImages = async (req, res) => {
-  const query = req.body;
-  const rejectedFilenames = await db.users.updateImages(query, req.user.organisationId);
-  return res.json(rejectedFilenames);
+  const { files, fieldName, overwrite } = req.body;
+  const isUserField = ['Email', 'Phone'].includes(fieldName);
+  const promises = [];
+  const client = await getPool().connect();
+  try {
+    await client.query('begin');
+    for (const file of files) {
+      const { fileId, originalName } = file;
+      const fieldValue = path.parse(originalName).name;
+      let promise;
+      if (isUserField) {
+        promise = db.users.updateImageByPrimaryField({
+          fileId,
+          fieldName,
+          fieldValue
+        }, overwrite, req.user.organisationId, client);
+      }
+      else {
+        promise = db.users.updateImageByCustomField({
+          fileId,
+          fieldName,
+          fieldValue
+        }, overwrite, req.user.organisationId, client);
+      }
+      promises.push(promise);
+    }
+    const results = await Promise.all(promises);
+    await client.query('commit');
+    const error = overwrite ? 'No matching user found' : 'No matching user found or user already has a profile photo';
+    const errors = results.reduce((a, c, i) => {
+      if (c.rowCount === 0) {
+        a.push({ originalName: files[i].originalName, error });
+      }
+      return a;
+    }, []);
+    return res.json(errors);
+  }
+  catch (e) {
+    await client.query('rollback');
+    return res.sendStatus(500);
+  }
+  finally {
+    client.release();
+  }
 }
 
 const remove = async (req, res) => {

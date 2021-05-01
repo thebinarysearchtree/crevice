@@ -141,6 +141,7 @@ const getUserDetails = async (userId, organisationId, client = pool) => {
       u.email,
       u.phone,
       u.pager,
+      u.image_id,
       json_agg(build_json_object(
         'fieldName', f.name,
         'itemName', fi.name,
@@ -318,55 +319,46 @@ const find = async ({
   }
 }
 
-const updateImages = async ({
-  files,
+const updateImageByPrimaryField = async ({
+  fileId,
   fieldName,
-  overwrite
-}, organisationId, client = pool) => {
-  const isUserField = ['Email', 'Phone'].includes(fieldName);
+  fieldValue
+}, overwrite, organisationId, client = pool) => {
   const where = overwrite ? '' : ' and u.image_id is null';
-  const errors = [];
-  for (const file of files) {
-    const { fileId, originalName } = file;
-    const fieldValue = path.parse(originalName).name;
-    let result;
-    if (isUserField) {
-      result = await client.query(`
-        update users u
-        set image_id = $1
-        from user_organisations uo
-        where
-          uo.user_id = u.id and
-          uo.organisation_id = $3 and
-          u.${fieldName} = $2
-          ${where}`, [fileId, fieldValue, organisationId]);
-    }
-    else {
-      result = await client.query(`
-        update users u
-        set image_id = $1
-        from 
-          user_organisations uo,
-          user_fields uf,
-          fields f
-        where
-          uo.user_id = u.id and
-          uf.user_id = u.id and
-          uf.field_id = f.id and
-          uo.organisation_id = $4 and
-          f.name = $2 and
-          uf.text_value = $3
-          ${where}`, [fileId, fieldName, fieldValue, organisationId]);
-    }
-    if (result.rowCount === 0) {
-      const error = overwrite ? 'No matching user found' : 'No matching user found or user already has a profile photo';
-      errors.push({
-        originalName,
-        error
-      });
-    }
-  }
-  return errors;
+  const result = await client.query(`
+    update users u
+    set image_id = $1
+    from user_organisations uo
+    where
+      uo.user_id = u.id and
+      uo.organisation_id = $3 and
+      u.${fieldName} = $2
+      ${where}`, [fileId, fieldValue, organisationId]);
+  return result;
+}
+
+const updateImageByCustomField = async ({
+  fileId,
+  fieldName,
+  fieldValue
+}, overwrite, organisationId, client = pool) => {
+  const where = overwrite ? '' : ' and u.image_id is null';
+  const result = await client.query(`
+    update users u
+    set image_id = $1
+    from 
+      user_organisations uo,
+      user_fields uf,
+      fields f
+    where
+      uo.user_id = u.id and
+      uf.user_id = u.id and
+      uf.field_id = f.id and
+      uo.organisation_id = $4 and
+      f.name = $2 and
+      uf.text_value = $3
+      ${where}`, [fileId, fieldName, fieldValue, organisationId]);
+  return result;
 }
 
 const resetFailedPasswordAttempts = async (userId, client = pool) => {
@@ -454,7 +446,8 @@ module.exports = {
   changePassword,
   changePasswordWithToken,
   find,
-  updateImages,
+  updateImageByPrimaryField,
+  updateImageByCustomField,
   resetFailedPasswordAttempts,
   incrementFailedPasswordAttempts,
   disable,

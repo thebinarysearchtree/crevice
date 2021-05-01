@@ -9,10 +9,13 @@ const db = {
 
 const insertSelect = async (field, organisationId, client) => {
   const fieldId = await db.fields.insert(field, organisationId, client);
+  const promises = [];
   for (const item of field.selectItems) {
     const { name, itemNumber } = item;
-    await db.fieldItems.insert({ fieldId, name, itemNumber }, organisationId, client);
+    const promise = db.fieldItems.insert({ fieldId, name, itemNumber }, organisationId, client);
+    promises.push(promise);
   }
+  await Promise.all(promises);
 }
 
 const insert = async (req, res) => {
@@ -52,21 +55,27 @@ const update = async (req, res) => {
     }
     if (field.fieldType === 'Select') {
       const existingItemIds = field.selectItems.map(i => i.id);
+      const promises = [];
       for (const item of itemsToDelete) {
         if (existingItemIds.includes(item.id)) {
-          await db.fieldItems.remove(item.id, organisationId, client);
+          const promise = db.fieldItems.remove(item.id, organisationId, client);
+          promises.push(promise);
         }
       }
       for (const item of itemsToAdd) {
-        await db.fieldItems.insert({...item, fieldId }, organisationId, client);
+        const promise = db.fieldItems.insert({...item, fieldId }, organisationId, client);
+        promises.push(promise);
       }
       for (const item of itemsToUpdate) {
         if (existingItemIds.includes(item.id)) {
-          await db.fieldItems.update(item, organisationId, client);
+          const promise = db.fieldItems.update(item, organisationId, client);
+          promises.push(promise);
         }
       }
+      await Promise.all(promises);
     }
     await client.query('commit');
+    return res.sendStatus(200);
   }
   catch (e) {
     await client.query('rollback');
@@ -75,8 +84,6 @@ const update = async (req, res) => {
   finally {
     client.release();
   }
-
-  return res.sendStatus(200);
 }
 
 const moveUp = async (req, res) => {

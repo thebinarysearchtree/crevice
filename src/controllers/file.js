@@ -5,9 +5,12 @@ const db = {
 };
 
 const uploadFiles = async (req, res) => {
+  const promises = [];
   for (const file of req.files) {
-    await db.files.insert(file, req.user.id, req.user.organisationId);
+    const promise = db.files.insert(file, req.user.id, req.user.organisationId);
+    promises.push(promise);
   }
+  await Promise.all(promises);
   return res.json(req.files);
 }
 
