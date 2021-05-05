@@ -1,5 +1,4 @@
 const getPool = require('../database/db');
-const path = require('path');
 
 const pool = getPool();
 
@@ -93,21 +92,6 @@ const setEmailToken = async (email, emailToken, client = pool) => {
 
 const getByEmail = async (email, client = pool) => {
   const result = await client.query(`
-    with area_result as (
-      select
-        $1 as email,
-        json_agg(json_build_object(
-          'id', a.area_id, 
-          'roleId', a.role_id,
-          'isAdmin', a.is_admin)) as areas
-      from
-        users u,
-        user_areas a
-      where
-        u.email = $1 and
-        a.user_id = u.id and
-        a.start_time <= now() and
-        (a.end_time is null or a.end_time > now()))
     select 
       u.id,
       u.first_name,
@@ -120,46 +104,82 @@ const getByEmail = async (email, client = pool) => {
       u.is_verified,
       u.failed_password_attempts,
       o.organisation_id,
-      coalesce(a.areas, json_build_array()) as areas
+      coalesce(json_agg(json_build_object(
+        'id', a.area_id, 
+        'roleId', a.role_id,
+        'isAdmin', a.is_admin)) filter (where a.area_id is not null), json_build_array()) as areas
     from 
       users u join
       user_organisations o on u.id = o.user_id left join
-      area_result a on u.email = a.email
+      user_areas a on 
+        a.user_id = u.id and
+        a.deleted_at is null and
+        a.start_time <= now() and
+        (a.end_time is null or a.end_time > now())
     where
       u.email = $1 and
       u.is_disabled is false and
       u.is_verified is true and
       u.deleted_at is null and
-      o.is_default`, [email]);
+      o.is_default
+    group by
+      u.id,
+      o.organisation_id`, [email]);
   return result.rows[0];
 }
 
 const getUserDetails = async (userId, organisationId, client = pool) => {
   const result = await client.query(`
+    with areas_result as (
+      select
+        ua.user_id,
+        json_agg(distinct r.name) as roles,
+        json_agg(distinct a.abbreviation) as areas
+      from
+        user_areas ua join
+        roles r on ua.role_id = r.id join
+        areas a on ua.area_id = a.id
+      where
+        ua.user_id = $1 and
+        r.deleted_at is null and
+        a.deleted_at is null and
+        ua.deleted_at is null and
+        ua.start_time <= now() and
+        (ua.end_time is null or ua.end_time > now())
+      group by ua.user_id),
+    user_result as (
+      select
+        u.id as user_id,
+        concat_ws(' ', u.first_name, u.last_name) as name,
+        u.email,
+        u.phone,
+        u.pager,
+        u.image_id,
+        coalesce(json_agg(json_build_object(
+          'fieldName', f.name,
+          'itemName', fi.name,
+          'textValue', uf.text_value,
+          'dateValue', uf.date_value) order by f.field_number asc) filter (where f.id is not null), json_build_array()) as fields
+      from
+        users u join
+        user_organisations uo on 
+          uo.user_id = u.id and 
+          uo.organisation_id = $2 left join
+        user_fields uf on uf.user_id = u.id left join
+        fields f on uf.field_id = f.id left join
+        field_items fi on uf.item_id = fi.id
+      where
+        u.id = $1 and
+        f.deleted_at is null
+      group by u.id)
     select
-      ws_concat(' ', u.first_name, u.last_name) as name,
-      u.email,
-      u.phone,
-      u.pager,
-      u.image_id,
-      json_agg(build_json_object(
-        'fieldName', f.name,
-        'itemName', fi.name,
-        'textValue', uf.text_value,
-        'dateValue', uf.date_value) order by f.field_number asc) as fields
+      ur.*,
+      coalesce(ar.roles, json_build_array()) as roles,
+      coalesce(ar.areas, json_build_array()) as areas
     from
-      users u join
-      user_organisations uo on 
-        uo.user_id = u.id and 
-        uo.organisation_id = $2 left join
-      user_fields uf on uf.user_id = u.id join
-      fields f on uf.field_id = f.id left join
-      field_items fi on uf.item_id = fi.id
-    where
-      u.id = $1 and
-      f.deleted_at is null
-    group by u.id`, [userId, organisationId]);
-  const user = result.rows[0];
+      user_result ur left join
+      areas_result ar on ur.user_id = ar.user_id`, [userId, organisationId]);
+  return result.rows[0];
 }
 
 const getTasks = async (organisationId, client = pool) => {
@@ -245,11 +265,11 @@ const find = async ({
   }
   if (activeDate) {
     params.push(activeDate);
-    where.push(`and ua.start_time <= $${params.length} and (ua.end_time is null or ua.end_time >= $${params.length})`);
+    where.push(`and ua.start_time <= $${params.length} and (ua.end_time is null or ua.end_time > $${params.length})`);
   }
   if (activeState !== 'All') {
     if (activeState === 'Current') {
-      having = 'having count(*) filter (where ua.start_time <= now() and (ua.end_time is null or ua.end_time >= now())) > 0';
+      having = 'having count(*) filter (where ua.start_time <= now() and (ua.end_time is null or ua.end_time > now())) > 0';
     }
     else if (activeState === 'Future') {
       having = 'having count(*) filter (where ua.start_time > now()) > 0';
@@ -295,6 +315,7 @@ const find = async ({
       user_organisations uo on uo.user_id = u.id left join
       shift_result s on s.user_id = u.id
     where
+      ua.deleted_at is null and
       a.deleted_at is null and
       r.deleted_at is null and
       u.deleted_at is null and
@@ -441,6 +462,7 @@ module.exports = {
   getById,
   setEmailToken,
   getByEmail,
+  getUserDetails,
   getTasks,
   getRefreshToken,
   changePassword,

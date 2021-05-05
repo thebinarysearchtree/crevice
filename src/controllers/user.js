@@ -498,6 +498,12 @@ const find = async (req, res) => {
   return res.json(result);
 }
 
+const getUserDetails = async (req, res) => {
+  const { userId } = req.body;
+  const userDetails = await db.users.getUserDetails(userId, req.user.organisationId);
+  return res.json(userDetails);
+}
+
 const changeImage = async (req, res) => {
   const userId = req.params.userId;
   const imageId = req.files[0].fileId;
@@ -569,6 +575,7 @@ module.exports = {
   refreshToken,
   changePassword,
   find,
+  getUserDetails,
   changeImage,
   updateImages,
   remove

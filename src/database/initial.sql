@@ -220,12 +220,13 @@ create index user_fields_user_id_index on user_fields(user_id);
 
 create table user_areas (
     id serial primary key,
-    user_id integer not null references users on delete cascade,
-    area_id integer not null references areas on delete cascade,
+    user_id integer not null references users,
+    area_id integer not null references areas,
     start_time timestamptz not null,
     end_time timestamptz,
-    role_id integer not null references roles on delete cascade,
+    role_id integer not null references roles,
     is_admin boolean not null,
+    deleted_at timestamptz,
     organisation_id integer not null references organisations on delete cascade
 );
 

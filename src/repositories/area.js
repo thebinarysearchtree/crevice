@@ -113,7 +113,7 @@ const getSelectListItems = async (isAdmin, userId, organisationId, client = pool
       ua.user_id = $1 and
       ua.organisation_id = $2 and
       ua.is_admin is true and
-      ua.start_time <= now() and (ua.end_time >= now() or ua.end_time is null) and
+      ua.start_time <= now() and (ua.end_time > now() or ua.end_time is null) and
       a.deleted_at is null
     order by a.abbreviation desc`, [userId, organisationId]);
   return result.rows;
@@ -135,7 +135,7 @@ const find = async (organisationId, client = pool) => {
       user_areas ua on 
         a.id = ua.area_id and
         ua.start_time <= now() and
-        (ua.end_time is null or ua.end_time >= now()) left join
+        (ua.end_time is null or ua.end_time > now()) left join
       users u on 
         ua.user_id = u.id and 
         u.deleted_at is null
