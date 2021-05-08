@@ -74,6 +74,7 @@ const getWithLocation = async (organisationId, client = pool) => {
   const result =  await client.query(`
     select
       l.name,
+      l.time_zone,
       json_agg(json_build_object(
         'id', a.id,
         'name', a.name,
