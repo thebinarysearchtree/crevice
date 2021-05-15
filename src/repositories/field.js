@@ -28,7 +28,7 @@ const update = async (fieldId, name, organisationId, client = pool) => {
       name = $2
     where
       id = $1 and
-      organisation_id = $4 and
+      organisation_id = $3 and
       deleted_at is null`, [fieldId, name, organisationId]);
   return result;
 }
@@ -128,21 +128,39 @@ const getSelectListItems = async (organisationId, client = pool) => {
 
 const find = async (organisationId, client = pool) => {
   const result = await client.query(`
+    with items_result as (
+      select
+        field_id,
+        json_agg(json_build_object(
+          'id', id,
+          'name', name,
+          'itemNumber', item_number) order by item_number asc) as select_items
+      from field_items
+      where deleted_at is null
+      group by field_id),
+    fields_result as (
+      select
+        f.id,
+        f.name,
+        f.field_type,
+        f.field_number,
+        count(*) filter (where uf.id is not null) as user_count
+      from
+        fields f left join
+        user_fields uf on uf.field_id = f.id left join
+        users u on uf.user_id = u.id
+      where
+        f.organisation_id = $1 and
+        f.deleted_at is null and
+        u.deleted_at is null
+      group by f.id
+      order by f.field_number asc)
     select
-      f.id,
-      f.name,
-      f.field_type,
-      f.field_number,
-      count(*) filter (where uf.id is not null) as user_count
+      f.*,
+      coalesce(i.select_items, json_build_array()) as select_items
     from
-      fields f left join
-      user_fields uf on uf.field_id = f.id left join
-      users u on uf.user_id = u.id
-    where
-      f.organisation_id = $1 and
-      f.deleted_at is null and
-      u.deleted_at is null
-    group by f.id
+      fields_result f left join
+      items_result i on f.id = i.field_id
     order by f.field_number asc`, [organisationId]);
   return result.rows;
 }

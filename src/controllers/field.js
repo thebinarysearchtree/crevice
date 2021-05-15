@@ -16,6 +16,7 @@ const insertSelect = async (field, organisationId, client) => {
     promises.push(promise);
   }
   await Promise.all(promises);
+  return fieldId;
 }
 
 const insert = async (req, res) => {
@@ -25,14 +26,16 @@ const insert = async (req, res) => {
   const client = await getPool().connect();
   try {
     await client.query('begin');
+    let fieldId;
     if (fieldType === 'Select') {
-      await insertSelect(field, organisationId, client);
+      fieldId = await insertSelect(field, organisationId, client);
     }
     else {
-      await db.fields.insert(field, organisationId, client);
+      fieldId = await db.fields.insert(field, organisationId, client);
     }
+    const savedField = await db.fields.getById(fieldId, organisationId, client);
     await client.query('commit');
-    return res.sendStatus(200);
+    return res.json(savedField);
   }
   catch (e) {
     await client.query('rollback');
@@ -74,8 +77,9 @@ const update = async (req, res) => {
       }
       await Promise.all(promises);
     }
+    const updatedField = await db.fields.getById(fieldId, organisationId, client);
     await client.query('commit');
-    return res.sendStatus(200);
+    return res.json(updatedField);
   }
   catch (e) {
     await client.query('rollback');

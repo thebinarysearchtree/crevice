@@ -55,24 +55,21 @@ const update = async ({
   id,
   userId,
   areaId,
-  roleId,
   startTime,
-  endTime,
-  isAdmin
+  endTime
 }, organisationId, client = pool) => {
-  const where1 = endTime ? 'cast($5 as timestamptz) < cast($6 as timestamptz) and ' : '';
-  const where2 = endTime ? 'start_time < $6 and ' : '';
+  const where1 = endTime ? 'cast($4 as timestamptz) < cast($5 as timestamptz) and ' : '';
+  const where2 = endTime ? 'start_time < $5 and ' : '';
   const result = await client.query(`
     update user_areas as a
     set
-      role_id = $4,
-      start_time = $5,
-      end_time = $6,
-      is_admin = $7
+      area_id = $3,
+      start_time = $4,
+      end_time = $5
     where
       ${where1}
       id = $1 and
-      organisation_id = $8 and
+      organisation_id = $6 and
       deleted_at is null and
       not exists(
         select 1 from user_areas
@@ -86,14 +83,8 @@ const update = async ({
         select 1 from areas
         where
           id = $3 and
-          organisation_id = $8 and
-          deleted_at is null) and
-      exists(
-        select 1 from roles
-        where
-          id = $4 and
-          organisation_id = $8 and
-          deleted_at is null)`, [id, userId, areaId, roleId, startTime, endTime, isAdmin, organisationId]);
+          organisation_id = $6 and
+          deleted_at is null)`, [id, userId, areaId, startTime, endTime, organisationId]);
   if (result.rowCount !== 1) {
     throw new Error();
   }
@@ -105,8 +96,11 @@ const find = async (userId, organisationId, client = pool) => {
       a.id,
       a.abbreviation, 
       a.name,
+      l.time_zone,
       json_agg(json_build_object(
+        'id', ua.id,
         'roleId', ua.role_id,
+        'roleName', r.name,
         'roleColour', r.colour,
         'startTime', ua.start_time at time zone l.time_zone,
         'endTime', ua.end_time at time zone l.time_zone,
@@ -122,7 +116,7 @@ const find = async (userId, organisationId, client = pool) => {
       ua.deleted_at is null and
       r.deleted_at is null and
       a.deleted_at is null
-    group by a.id
+    group by a.id, l.time_zone
     order by abbreviation asc`, [userId, organisationId]);
   return result.rows;
 }
