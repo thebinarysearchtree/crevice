@@ -74,11 +74,17 @@ const update = async ({
       not exists(
         select 1 from user_areas
         where
+          id != $1 and
           user_id = $2 and
           area_id = $3 and
           ${where2}
           (end_time is null or end_time > $5)
           and deleted_at is null) and
+      exists(
+        select 1 from user_areas
+        where
+          id = $1 and
+          user_id = $2) and
       exists(
         select 1 from areas
         where
@@ -104,7 +110,7 @@ const find = async (userId, organisationId, client = pool) => {
         'roleColour', r.colour,
         'startTime', ua.start_time at time zone l.time_zone,
         'endTime', ua.end_time at time zone l.time_zone,
-        'isAdmin', ua.is_admin) order by ua.start_time desc) as periods
+        'isAdmin', ua.is_admin) order by ua.start_time asc) as periods
     from 
       user_areas ua join
       roles r on ua.role_id = r.id join
@@ -127,8 +133,8 @@ const remove = async (userAreaId, organisationId, client = pool) => {
     set deleted_at = now()
     where
       id = $1 and
-      organisationId = $2 and
-      deleted_at is not null`, [userAreaId, organisationId]);
+      organisation_id = $2 and
+      deleted_at is null`, [userAreaId, organisationId]);
 }
 
 module.exports = {

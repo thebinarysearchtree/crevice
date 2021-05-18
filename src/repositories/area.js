@@ -75,11 +75,11 @@ const getWithLocation = async (organisationId, client = pool) => {
     select
       l.id,
       l.name,
-      l.time_zone,
       json_agg(json_build_object(
         'id', a.id,
         'name', a.name,
-        'abbreviation', a.abbreviation) order by a.abbreviation asc) as areas
+        'abbreviation', a.abbreviation,
+        'timeZone', l.time_zone) order by a.abbreviation asc) as areas
     from
       areas a join
       locations l on a.location_id = l.id
