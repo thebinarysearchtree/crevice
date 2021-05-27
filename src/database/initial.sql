@@ -415,7 +415,7 @@ create table shift_roles (
     id serial primary key,
     shift_id integer not null references shifts on delete cascade,
     role_id integer not null references roles,
-    amount integer not null,
+    capacity integer not null,
     cancel_before_minutes integer,
     cancel_after_minutes integer,
     book_before_minutes integer,

@@ -75,6 +75,7 @@ const getWithLocation = async (organisationId, client = pool) => {
     select
       l.id,
       l.name,
+      l.abbreviation,
       json_agg(json_build_object(
         'id', a.id,
         'name', a.name,
