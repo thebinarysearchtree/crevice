@@ -59,8 +59,7 @@ const signUp = async (req, res) => {
       isAdmin
     };
 
-    const userId = await db.users.insert(user, client);
-    await db.users.addOrganisation(userId, organisationId, client);
+    const userId = await db.users.insert(user, organisationId, client);
     await client.query('commit');
 
     const url = `https://${config.host}/invite/${userId}/${emailToken}`;
@@ -294,8 +293,7 @@ const inviteUsers = async (req, res) => {
     };
     try {
       await client.query('begin');
-      const userId = await db.users.insert(user, client);
-      await db.users.addOrganisation(userId, organisationId, client);
+      const userId = await db.users.insert(user, organisationId, client);
       const promises = [];
       for (const userArea of userAreas) {
         const promise = db.userAreas.insert({ ...userArea, userId }, organisationId, client);

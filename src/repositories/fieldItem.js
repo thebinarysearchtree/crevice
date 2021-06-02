@@ -30,19 +30,16 @@ const update = async ({
       item_number = $3
     where
       id = $1 and
-      organisation_id = $4 and
-      deleted_at is null`, [id, name, itemNumber, organisationId]);
+      organisation_id = $4`, [id, name, itemNumber, organisationId]);
   return result;
 }
 
 const remove = async (itemId, organisationId, client = pool) => {
   const result = await client.query(`
-    update field_items
-    set deleted_at = now()
+    delete from field_items
     where
       id = $1 and
-      organisation_id = $2 and
-      deleted_at is null`, [itemId, organisationId]);
+      organisation_id = $2`, [itemId, organisationId]);
   return result;
 }
 

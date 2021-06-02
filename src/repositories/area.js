@@ -47,7 +47,6 @@ const update = async ({
     where
       id = $1 and
       organisation_id = $6 and
-      deleted_at is null and
       exists(
         select 1 from locations
         where
@@ -84,9 +83,7 @@ const getWithLocation = async (organisationId, client = pool) => {
     from
       areas a join
       locations l on a.location_id = l.id
-    where
-      a.organisation_id = $1 and
-      a.deleted_at is null
+    where a.organisation_id = $1
     group by l.id
     order by l.name asc`, [organisationId]);
   return result.rows;
@@ -99,9 +96,7 @@ const getSelectListItems = async (isAdmin, userId, organisationId, client = pool
         id, 
         abbreviation as name
       from areas 
-      where 
-        organisation_id = $1 and
-        deleted_at is null
+      where organisation_id = $1
       order by abbreviation desc`, [organisationId]);
     return result.rows;
   }
@@ -116,8 +111,7 @@ const getSelectListItems = async (isAdmin, userId, organisationId, client = pool
       ua.user_id = $1 and
       ua.organisation_id = $2 and
       ua.is_admin is true and
-      ua.start_time <= now() and (ua.end_time > now() or ua.end_time is null) and
-      a.deleted_at is null
+      ua.start_time <= now() and (ua.end_time > now() or ua.end_time is null)
     order by a.abbreviation desc`, [userId, organisationId]);
   return result.rows;
 }
@@ -139,12 +133,8 @@ const find = async (organisationId, client = pool) => {
         a.id = ua.area_id and
         ua.start_time <= now() and
         (ua.end_time is null or ua.end_time > now()) left join
-      users u on 
-        ua.user_id = u.id and 
-        u.deleted_at is null
-    where
-      a.organisation_id = $1 and
-      a.deleted_at is null
+      users u on ua.user_id = u.id
+    where a.organisation_id = $1
     group by
       a.id,
       l.name,
@@ -157,12 +147,10 @@ const find = async (organisationId, client = pool) => {
 
 const remove = async (areaId, organisationId, client = pool) => {
   await client.query(`
-    update areas
-    set deleted_at = now()
+    delete from areas
     where
       id = $1 and
-      organisation_id = $2 and
-      deleted_at is null`, [areaId, organisationId]);
+      organisation_id = $2`, [areaId, organisationId]);
 }
 
 module.exports = {

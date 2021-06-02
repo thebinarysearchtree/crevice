@@ -14,9 +14,7 @@ const insert = async ({
       organisation_id)
     select $1, $2, coalesce(max(field_number), 0) + 1, $3
     from fields
-    where
-      organisation_id = $3 and
-      deleted_at is null
+    where organisation_id = $3
     returning id`, [name, fieldType, organisationId]);
   return result.rows[0].id;
 }
@@ -28,8 +26,7 @@ const update = async (fieldId, name, organisationId, client = pool) => {
       name = $2
     where
       id = $1 and
-      organisation_id = $3 and
-      deleted_at is null`, [fieldId, name, organisationId]);
+      organisation_id = $3`, [fieldId, name, organisationId]);
   return result;
 }
 
@@ -41,7 +38,6 @@ const moveUp = async (fieldId, organisationId, client = pool) => {
       where
         id = $1 and
         organisation_id = $2 and
-        deleted_at is null and
         field_number > 1
       returning field_number)
     update fields
@@ -49,7 +45,6 @@ const moveUp = async (fieldId, organisationId, client = pool) => {
     where
       id != $1 and
       organisation_id = $2 and
-      deleted_at is null and
       field_number = (select field_number from update_result)`, [fieldId, organisationId]);
   return result;
 }
@@ -68,8 +63,7 @@ const getById = async (fieldId, organisationId, client = pool) => {
       field_items i on i.field_id = f.id
     where
       f.id = $1 and
-      f.organisation_id = $2 and
-      i.deleted_at is null
+      f.organisation_id = $2
     group by f.id`, [fieldId, organisationId]);
   return result.rows[0];
 }
@@ -80,8 +74,7 @@ const getFilenameFields = async (organisationId, client = pool) => {
     from fields
     where
       organisation_id = $1 and
-      field_type in ('Short', 'Standard', 'Number') and
-      deleted_at is null`, [organisationId]);
+      field_type in ('Short', 'Standard', 'Number')`, [organisationId]);
   return result.rows.map(f => f.name);
 }
 
@@ -90,7 +83,6 @@ const getCsvFields = async (organisationId, client = pool) => {
     select * from fields
     where 
       organisation_id = $1 and
-      deleted_at is null and
       field_type in ('Short', 'Standard', 'Number', 'Select')`, [organisationId]);
   return result.rows;
 }
@@ -103,10 +95,7 @@ const getAllFields = async (organisationId, client = pool) => {
     from 
       fields f left join
       field_items i on i.field_id = f.id
-    where 
-      f.organisation_id = $1 and
-      f.deleted_at is null and
-      i.deleted_at is null
+    where f.organisation_id = $1
     group by f.id
     order by f.field_number asc`, [organisationId]);
   return result.rows;
@@ -119,9 +108,7 @@ const getSelectListItems = async (organisationId, client = pool) => {
       name,
       field_type
     from fields
-    where
-      organisation_id = $1 and
-      deleted_at is null
+    where organisation_id = $1
     order by field_number asc`, [organisationId]);
   return result.rows;
 }
@@ -136,7 +123,6 @@ const find = async (organisationId, client = pool) => {
           'name', name,
           'itemNumber', item_number) order by item_number asc) as select_items
       from field_items
-      where deleted_at is null
       group by field_id),
     fields_result as (
       select
@@ -149,10 +135,7 @@ const find = async (organisationId, client = pool) => {
         fields f left join
         user_fields uf on uf.field_id = f.id left join
         users u on uf.user_id = u.id
-      where
-        f.organisation_id = $1 and
-        f.deleted_at is null and
-        u.deleted_at is null
+      where f.organisation_id = $1
       group by f.id
       order by f.field_number asc)
     select
@@ -167,20 +150,17 @@ const find = async (organisationId, client = pool) => {
 
 const remove = async (fieldId, organisationId, client = pool) => {
   await client.query(`
-    with update_result as (
-      update fields
-      set deleted_at = now()
+    with delete_result as (
+      delete from fields
       where
         id = $1 and
-        organisation_id = $2 and
-        deleted_at is null
+        organisation_id = $2
       returning field_number)
     update fields
     set field_number = field_number - 1
     where
       organisation_id = $2 and
-      deleted_at is null and
-      field_number > (select field_number from update_result)`, [fieldId, organisationId]);
+      field_number > (select field_number from delete_result)`, [fieldId, organisationId]);
 }
 
 module.exports = {

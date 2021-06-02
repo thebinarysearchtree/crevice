@@ -5,9 +5,7 @@ const { admin } = require('../middleware/permission');
 const { files, photos } = require('../middleware/upload');
 const fileController = require('../controllers/file');
 
-let wrap = fn => (...args) => fn(...args).catch(args[2]);
-
-router.post('/uploadFiles', [auth, admin, files], wrap(fileController.uploadFiles));
-router.post('/uploadPhotos', [auth, admin, photos], wrap(fileController.uploadPhotos));
+router.post('/uploadFiles', [auth, admin, files], fileController.uploadFiles);
+router.post('/uploadPhotos', [auth, admin, photos], fileController.uploadPhotos);
 
 module.exports = router;

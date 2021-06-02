@@ -41,8 +41,7 @@ const update = async ({
       address = $5
     where
       id = $1 and
-      organisation_id = $6 and
-      deleted_at is null`, [
+      organisation_id = $6`, [
         id,
         name,
         abbreviation,
@@ -66,9 +65,7 @@ const getSelectListItems = async (organisationId, client = pool) => {
       id,
       abbreviation as name
     from locations 
-    where 
-      organisation_id = $1 and
-      deleted_at is null
+    where organisation_id = $1
     order by abbreviation asc`, [organisationId]);
   return result.rows;
 }
@@ -80,42 +77,19 @@ const find = async (organisationId, client = pool) => {
       count(*) filter (where a.id is not null) as area_count
     from 
       locations l left join
-      areas a on 
-        l.id = a.location_id and 
-        a.deleted_at is null
-    where
-      l.organisation_id = $1 and
-      l.deleted_at is null
+      areas a on l.id = a.location_id
+    where l.organisation_id = $1
     group by l.id
     order by l.name asc`, [organisationId]);
   return result.rows;
 }
 
 const remove = async (locationId, organisationId) => {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    await client.query(`
-      update locations
-      set deleted_at = now()
-      where
-        id = $1 and
-        organisation_id = $2 and
-        deleted_at is null`, [locationId, organisationId]);
-    await client.query(`
-      update areas
-      set deleted_at = now()
-      where
-        location_id = $1 and
-        organisation_id = $2`, [locationId, organisationId]);
-    await client.query('commit');
-  }
-  catch (e) {
-    await client.query('rollback');
-  }
-  finally {
-    client.release();
-  }
+  await client.query(`
+    delete from locations
+    where
+      id = $1 and
+      organisation_id = $2`, [locationId, organisationId]);
 }
 
 module.exports = {

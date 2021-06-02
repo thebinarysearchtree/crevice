@@ -15,6 +15,7 @@ const areas = require('./src/routes/area');
 const files = require('./src/routes/file');
 const fields = require('./src/routes/field');
 const userAreas = require('./src/routes/userArea');
+const shifts = require('./src/routes/shift');
 
 app.use('/users', users);
 app.use('/roles', roles);
@@ -23,6 +24,14 @@ app.use('/areas', areas);
 app.use('/files', files);
 app.use('/fields', fields);
 app.use('/userAreas', userAreas);
+app.use('/shifts', shifts);
+
+app.use((err, req, res, next) => {
+  if (res.headersSent) {
+    return next(err);
+  }
+  return res.sendStatus(500);
+});
 
 const server = app.listen(config.port);
 

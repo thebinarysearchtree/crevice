@@ -13,7 +13,7 @@ const insert = async ({
   imageId,
   phone,
   pager
-}, client = pool) => {
+}, organisationId, client = pool) => {
   const result = await client.query(`
     insert into users(
       first_name,
@@ -25,8 +25,9 @@ const insert = async ({
       is_admin,
       image_id,
       phone,
-      pager)
-    values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      pager,
+      organisation_id)
+    values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
     returning id`, [
       firstName,
       lastName,
@@ -37,16 +38,9 @@ const insert = async ({
       isAdmin,
       imageId,
       phone,
-      pager]);
+      pager,
+      organisationId]);
   return result.rows[0].id;
-}
-
-const addOrganisation = async (userId, organisationId, client = pool) => {
-  await client.query(`
-    insert into user_organisations(
-      user_id,
-      organisation_id)
-    values($1, $2)`, [userId, organisationId]);
 }
 
 const checkEmailExists = async (email, client = pool) => {
@@ -60,18 +54,15 @@ const checkEmailExists = async (email, client = pool) => {
 const getById = async (userId, organisationId, client = pool) => {
   const result = await client.query(`
     select
-      u.id,
-      u.first_name,
-      u.last_name,
-      u.email,
-      u.email_token
-    from 
-      users u,
-      user_organisations o
+      id,
+      first_name,
+      last_name,
+      email,
+      email_token
+    from users
     where
-      u.id = $1 and
-      o.user_id = u.id and
-      o.organisation_id = $2`, [userId, organisationId]);
+      id = $1 and
+      organisation_id = $2`, [userId, organisationId]);
   return result.rows[0];
 }
 
@@ -103,28 +94,22 @@ const getByEmail = async (email, client = pool) => {
       u.is_disabled,
       u.is_verified,
       u.failed_password_attempts,
-      o.organisation_id,
+      u.organisation_id,
       coalesce(json_agg(json_build_object(
         'id', a.area_id, 
         'roleId', a.role_id,
         'isAdmin', a.is_admin)) filter (where a.area_id is not null), json_build_array()) as areas
     from 
-      users u join
-      user_organisations o on u.id = o.user_id left join
+      users u left join
       user_areas a on 
         a.user_id = u.id and
-        a.deleted_at is null and
         a.start_time <= now() and
         (a.end_time is null or a.end_time > now())
     where
       u.email = $1 and
       u.is_disabled is false and
-      u.is_verified is true and
-      u.deleted_at is null and
-      o.is_default
-    group by
-      u.id,
-      o.organisation_id`, [email]);
+      u.is_verified is true
+    group by u.id`, [email]);
   return result.rows[0];
 }
 
@@ -141,9 +126,6 @@ const getUserDetails = async (userId, organisationId, client = pool) => {
         areas a on ua.area_id = a.id
       where
         ua.user_id = $1 and
-        r.deleted_at is null and
-        a.deleted_at is null and
-        ua.deleted_at is null and
         ua.start_time <= now() and
         (ua.end_time is null or ua.end_time > now())
       group by ua.user_id),
@@ -161,16 +143,13 @@ const getUserDetails = async (userId, organisationId, client = pool) => {
           'textValue', uf.text_value,
           'dateValue', uf.date_value) order by f.field_number asc) filter (where f.id is not null), json_build_array()) as fields
       from
-        users u join
-        user_organisations uo on 
-          uo.user_id = u.id and 
-          uo.organisation_id = $2 left join
+        users u left join
         user_fields uf on uf.user_id = u.id left join
         fields f on uf.field_id = f.id left join
         field_items fi on uf.item_id = fi.id
-      where
-        u.id = $1 and
-        f.deleted_at is null
+      where 
+        u.id = $1 and 
+        u.organisation_id = $2
       group by u.id)
     select
       ur.*,
@@ -188,7 +167,6 @@ const getTasks = async (organisationId, client = pool) => {
       not exists (select 1 from roles where organisation_id = $1) as needs_roles,
       not exists (select 1 from locations where organisation_id = $1) as needs_locations,
       not exists (select 1 from areas where organisation_id = $1) as needs_areas,
-      not exists (select 1 from tags where organisation_id = $1) as needs_tags,
       not exists (select 1 from user_roles where organisation_id = $1) as needs_users;`, [organisationId]);
   return result.rows[0];
 }
@@ -293,10 +271,8 @@ const find = async ({
         count(*) filter (where s.start_time <= now()) as attended
       from
         bookings b join
-        shifts s on b.shift_id = s.id
-      where
-        b.cancelled_at is null and
-        s.deleted_at is null
+        shift_roles sr on b.shift_role_id = sr.id join
+        shifts s on sr.shift_id = s.id
       group by b.user_id)
     select 
       u.id,
@@ -311,15 +287,10 @@ const find = async ({
       user_areas ua join
       users u on ua.user_id = u.id join
       areas a on ua.area_id = a.id join
-      roles r on ua.role_id = r.id join
-      user_organisations uo on uo.user_id = u.id left join
+      roles r on ua.role_id = r.id left join
       shift_result s on s.user_id = u.id
     where
-      ua.deleted_at is null and
-      a.deleted_at is null and
-      r.deleted_at is null and
-      u.deleted_at is null and
-      uo.organisation_id = $1
+      u.organisation_id = $1
       ${where.join(' ')}
     group by u.id, s.booked, s.attended
     ${having}
@@ -349,10 +320,8 @@ const updateImageByPrimaryField = async ({
   const result = await client.query(`
     update users u
     set image_id = $1
-    from user_organisations uo
     where
-      uo.user_id = u.id and
-      uo.organisation_id = $3 and
+      u.organisation_id = $3 and
       u.${fieldName} = $2
       ${where}`, [fileId, fieldValue, organisationId]);
   return result;
@@ -368,14 +337,12 @@ const updateImageByCustomField = async ({
     update users u
     set image_id = $1
     from 
-      user_organisations uo,
       user_fields uf,
       fields f
     where
-      uo.user_id = u.id and
       uf.user_id = u.id and
       uf.field_id = f.id and
-      uo.organisation_id = $4 and
+      u.organisation_id = $4 and
       f.name = $2 and
       uf.text_value = $3
       ${where}`, [fileId, fieldName, fieldValue, organisationId]);
@@ -442,22 +409,15 @@ const getPassword = async (userId, client = pool) => {
 
 const remove = async (userId, organisationId, client = pool) => {
   await client.query(`
-    update users
-    set deleted_at = now()
+    delete from users
     where 
       id = $1 and
-      deleted_at is null and
-      is_admin is false and
-      exists(
-        select 1 from user_organisations
-        where
-          user_id = $1 and
-          organisation_id = $2)`, [userId, organisationId]);
+      organisation_id = $2 and
+      is_admin is false`, [userId, organisationId]);
 }
 
 module.exports = {
   insert,
-  addOrganisation,
   checkEmailExists,
   getById,
   setEmailToken,

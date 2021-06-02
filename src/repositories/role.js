@@ -28,8 +28,7 @@ const update = async ({
       colour = $3
     where
       id = $1 and
-      organisation_id = $4 and
-      deleted_at is null`, [id, name, colour, organisationId]);
+      organisation_id = $4`, [id, name, colour, organisationId]);
 }
 
 const getById = async (roleId, organisationId, client = pool) => {
@@ -48,9 +47,7 @@ const getSelectListItems = async (organisationId, client = pool) => {
       name,
       colour
     from roles 
-    where 
-      organisation_id = $1 and
-      deleted_at is null
+    where organisation_id = $1
     order by name desc`, [organisationId]);
   return result.rows;
 }
@@ -71,12 +68,10 @@ const find = async (organisationId, client = pool) => {
 
 const remove = async (roleId, organisationId, client = pool) => {
   await client.query(`
-    update roles
-    set deleted_at = now()
+    delete from roles
     where
       id = $1 and
-      organisation_id = $2 and
-      deleted_at is null`, [roleId, organisationId]);
+      organisation_id = $2`, [roleId, organisationId]);
 }
 
 module.exports = {

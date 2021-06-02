@@ -4,14 +4,12 @@ const auth = require('../middleware/authentication');
 const { admin } = require('../middleware/permission');
 const areaController = require('../controllers/area');
 
-let wrap = fn => (...args) => fn(...args).catch(args[2]);
-
-router.post('/insert', [auth, admin], wrap(areaController.insert));
-router.post('/update', [auth, admin], wrap(areaController.update));
-router.post('/getById', [auth, admin], wrap(areaController.getById));
-router.post('/getWithLocation', [auth, admin], wrap(areaController.getWithLocation));
-router.post('/getSelectListItems', [auth, admin], wrap(areaController.getSelectListItems));
-router.post('/find', [auth, admin], wrap(areaController.find));
-router.post('/remove', [auth, admin], wrap(areaController.remove));
+router.post('/insert', [auth, admin], areaController.insert);
+router.post('/update', [auth, admin], areaController.update);
+router.post('/getById', [auth, admin], areaController.getById);
+router.post('/getWithLocation', [auth, admin], areaController.getWithLocation);
+router.post('/getSelectListItems', [auth, admin], areaController.getSelectListItems);
+router.post('/find', [auth, admin], areaController.find);
+router.post('/remove', [auth, admin], areaController.remove);
 
 module.exports = router;

@@ -30,20 +30,17 @@ const insert = async ({
           user_id = $1 and
           area_id = $2 and
           ${where2}
-          (end_time is null or end_time > $5)
-          and deleted_at is null) and
+          (end_time is null or end_time > $5)) and
       exists(
         select 1 from areas
         where
           id = $2 and
-          organisation_id = $7 and
-          deleted_at is null) and
+          organisation_id = $7) and
       exists(
         select 1 from roles
         where
           id = $3 and
-          organisation_id = $7 and
-          deleted_at is null)
+          organisation_id = $7)
     returning id`, [userId, areaId, roleId, startTime, endTime, isAdmin, organisationId]);
   if (result.rowCount !== 1) {
     throw new Error();
@@ -70,7 +67,6 @@ const update = async ({
       ${where1}
       id = $1 and
       organisation_id = $6 and
-      deleted_at is null and
       not exists(
         select 1 from user_areas
         where
@@ -78,8 +74,7 @@ const update = async ({
           user_id = $2 and
           area_id = $3 and
           ${where2}
-          (end_time is null or end_time > $5)
-          and deleted_at is null) and
+          (end_time is null or end_time > $5)) and
       exists(
         select 1 from user_areas
         where
@@ -89,8 +84,7 @@ const update = async ({
         select 1 from areas
         where
           id = $3 and
-          organisation_id = $6 and
-          deleted_at is null)`, [id, userId, areaId, startTime, endTime, organisationId]);
+          organisation_id = $6)`, [id, userId, areaId, startTime, endTime, organisationId]);
   if (result.rowCount !== 1) {
     throw new Error();
   }
@@ -118,10 +112,7 @@ const find = async (userId, organisationId, client = pool) => {
       locations l on a.location_id = l.id
     where
       ua.user_id = $1 and
-      ua.organisation_id = $2 and
-      ua.deleted_at is null and
-      r.deleted_at is null and
-      a.deleted_at is null
+      ua.organisation_id = $2
     group by a.id, l.time_zone
     order by abbreviation asc`, [userId, organisationId]);
   return result.rows;
@@ -129,12 +120,10 @@ const find = async (userId, organisationId, client = pool) => {
 
 const remove = async (userAreaId, organisationId, client = pool) => {
   await client.query(`
-    update user_areas
-    set deleted_at = now()
+    delete from user_areas
     where
       id = $1 and
-      organisation_id = $2 and
-      deleted_at is null`, [userAreaId, organisationId]);
+      organisation_id = $2`, [userAreaId, organisationId]);
 }
 
 module.exports = {
