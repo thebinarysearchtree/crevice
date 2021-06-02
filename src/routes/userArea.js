@@ -4,10 +4,12 @@ const auth = require('../middleware/authentication');
 const { admin } = require('../middleware/permission');
 const userAreaController = require('../controllers/userArea');
 
-router.post('/insert', [auth, admin], userAreaController.insert);
-router.post('/insertMany', [auth, admin], userAreaController.insertMany);
-router.post('/update', [auth, admin], userAreaController.update);
-router.post('/find', [auth, admin], userAreaController.find);
-router.post('/remove', [auth, admin], userAreaController.remove);
+let wrap = fn => (...args) => fn(...args).catch(args[2]);
+
+router.post('/insert', [auth, admin], wrap(userAreaController.insert));
+router.post('/insertMany', [auth, admin], wrap(userAreaController.insertMany));
+router.post('/update', [auth, admin], wrap(userAreaController.update));
+router.post('/find', [auth, admin], wrap(userAreaController.find));
+router.post('/remove', [auth, admin], wrap(userAreaController.remove));
 
 module.exports = router;

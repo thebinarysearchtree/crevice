@@ -6,7 +6,7 @@ if (environment === 'test') {
   transport = {
     sendMail: (m) => {
       console.log(m);
-      return [];
+      return { rejected: [] };
     }
   }
 }

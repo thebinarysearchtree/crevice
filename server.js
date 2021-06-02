@@ -26,13 +26,6 @@ app.use('/fields', fields);
 app.use('/userAreas', userAreas);
 app.use('/shifts', shifts);
 
-app.use((err, req, res, next) => {
-  if (res.headersSent) {
-    return next(err);
-  }
-  return res.sendStatus(500);
-});
-
 const server = app.listen(config.port);
 
 module.exports = server;
