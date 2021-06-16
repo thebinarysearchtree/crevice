@@ -15,6 +15,7 @@ pg.Query.prototype.handleRowDescription = function(msg) {
 let pool = null;
 
 types.setTypeParser(20, (value) => parseInt(value, 10));
+types.setTypeParser(1700, (value) => Number(value));
 
 const getPool = () => {
   if (!pool) {

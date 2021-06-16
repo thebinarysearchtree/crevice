@@ -240,6 +240,7 @@ create table shifts (
     requires_approval boolean not null,
     approved_by integer references users on delete set null,
     question_group_id integer references question_groups on delete set null,
+    series_id uuid,
     organisation_id integer not null references organisations on delete cascade
 );
 
@@ -299,10 +300,10 @@ create table shift_roles (
     id serial primary key,
     shift_id integer not null references shifts on delete cascade,
     role_id integer not null references roles on delete cascade,
-    capacity integer not null,
+    capacity integer not null check (capacity >= 0),
     cancel_before_minutes integer not null,
     book_before_minutes integer not null,
-    can_edit_shift boolean not null,
+    can_book_and_cancel boolean not null,
     can_assign boolean not null,
     can_be_assigned boolean not null,
     organisation_id integer not null references organisations on delete cascade
