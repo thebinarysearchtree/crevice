@@ -1,4 +1,5 @@
 const getPool = require('../database/db');
+const { sql, wrap } = require('../utils/data');
 
 const pool = getPool();
 
@@ -8,20 +9,20 @@ const insert = async ({
   timeZone,
   address
 }, organisationId, client = pool) => {
-  const result = await client.query(`
+  const result = await client.query(sql`
     insert into locations(
       name,
       abbreviation,
       time_zone,
       address,
       organisation_id)
-    values($1, $2, $3, $4, $5)
-    returning id`, [
+    values(${[
       name,
       abbreviation,
       timeZone,
       address,
-      organisationId]);
+      organisationId]})
+    returning id`);
   return result.rows[0].id;
 }
 
@@ -35,61 +36,55 @@ const update = async ({
   await client.query(`
     update locations
     set
-      name = $2,
-      abbreviation = $3,
-      time_zone = $4,
-      address = $5
+      name = ${name},
+      abbreviation = ${abbreviation},
+      time_zone = ${timeZone},
+      address = ${address}
     where
-      id = $1 and
-      organisation_id = $6`, [
-        id,
-        name,
-        abbreviation,
-        timeZone,
-        address,
-        organisationId]);
+      id = ${id} and
+      organisation_id = ${organisationId}`);
 }
 
 const getById = async (locationId, organisationId, client = pool) => {
-  const result = await client.query(`
+  const result = await client.query(wrap`
     select * from locations
     where 
-      id = $1 and 
-      organisation_id = $2`, [locationId, organisationId]);
-  return result.rows[0];
+      id = ${locationId} and 
+      organisation_id = ${organisationId}`);
+  return result.rows[0].result;
 }
 
 const getSelectListItems = async (organisationId, client = pool) => {
-  const result = await client.query(`
+  const result = await client.query(wrap`
     select 
       id,
       abbreviation as name
     from locations 
-    where organisation_id = $1
-    order by abbreviation asc`, [organisationId]);
-  return result.rows;
+    where organisation_id = ${organisationId}
+    order by abbreviation asc`);
+  return result.rows[0].result;
 }
 
 const find = async (organisationId, client = pool) => {
-  const result = await client.query(`
+  const result = await client.query(wrap`
     select
       l.*,
       count(*) filter (where a.id is not null) as area_count
     from 
       locations l left join
       areas a on l.id = a.location_id
-    where l.organisation_id = $1
+    where l.organisation_id = ${organisationId}
     group by l.id
-    order by l.name asc`, [organisationId]);
-  return result.rows;
+    order by l.name asc`);
+  return result.rows[0].result;
 }
 
 const remove = async (locationId, organisationId) => {
-  await client.query(`
+  await client.query(sql`
     delete from locations
     where
-      id = $1 and
-      organisation_id = $2`, [locationId, organisationId]);
+      id = ${locationId} and
+      organisation_id = ${organisationId}`);
 }
 
 module.exports = {

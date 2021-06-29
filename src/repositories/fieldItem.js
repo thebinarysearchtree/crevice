@@ -1,4 +1,5 @@
 const getPool = require('../database/db');
+const { sql } = require('../utils/data');
 
 const pool = getPool();
 
@@ -7,14 +8,14 @@ const insert = async ({
   name,
   itemNumber
 }, organisationId, client = pool) => {
-  const result = await client.query(`
+  const result = await client.query(sql`
     insert into field_items(
       field_id,
       name,
       item_number,
       organisation_id)
-    values($1, $2, $3, $4)
-    returning id`, [fieldId, name, itemNumber, organisationId]);
+    values(${[fieldId, name, itemNumber, organisationId]})
+    returning id`);
   return result.rows[0].id;
 }
 
@@ -26,20 +27,20 @@ const update = async ({
   const result = await client.query(`
     update field_items
     set
-      name = $2,
-      item_number = $3
+      name = ${name},
+      item_number = ${itemNumber}
     where
-      id = $1 and
-      organisation_id = $4`, [id, name, itemNumber, organisationId]);
+      id = ${id} and
+      organisation_id = ${organisationId}`);
   return result;
 }
 
 const remove = async (itemId, organisationId, client = pool) => {
-  const result = await client.query(`
+  const result = await client.query(sql`
     delete from field_items
     where
-      id = $1 and
-      organisation_id = $2`, [itemId, organisationId]);
+      id = ${itemId} and
+      organisation_id = ${organisationId}`);
   return result;
 }
 

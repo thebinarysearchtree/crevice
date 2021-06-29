@@ -1,4 +1,5 @@
 const getPool = require('../database/db');
+const { sql, wrap } = require('../utils/data');
 
 const pool = getPool();
 
@@ -6,13 +7,13 @@ const insert = async ({
   name, 
   colour 
 }, organisationId, client = pool) => {
-  const result = await client.query(`
+  const result = await client.query(sql`
     insert into roles(
       name,
       colour,
       organisation_id)
-    values($1, $2, $3)
-    returning id`, [name, colour, organisationId]);
+    values(${[name, colour, organisationId]})
+    returning id`);
   return result.rows[0].id;
 }
 
@@ -21,57 +22,57 @@ const update = async ({
   name,
   colour
  }, organisationId, client = pool) => {
-  await client.query(`
+  await client.query(sql`
     update roles
     set 
-      name = $2,
-      colour = $3
+      name = ${name},
+      colour = ${colour}
     where
-      id = $1 and
-      organisation_id = $4`, [id, name, colour, organisationId]);
+      id = ${id} and
+      organisation_id = ${organisationId}`);
 }
 
 const getById = async (roleId, organisationId, client = pool) => {
-  const result = await client.query(`
+  const result = await client.query(wrap`
     select * from roles
     where 
-      id = $1 and 
-      organisation_id = $2`, [roleId, organisationId]);
-  return result.rows[0];
+      id = ${roleId} and 
+      organisation_id = ${organisationId}`);
+  return result.rows[0].result;
 }
 
 const getSelectListItems = async (organisationId, client = pool) => {
-  const result = await client.query(`
+  const result = await client.query(wrap`
     select 
       id,
       name,
       colour
     from roles 
-    where organisation_id = $1
-    order by name desc`, [organisationId]);
-  return result.rows;
+    where organisation_id = ${organisationId}
+    order by name desc`);
+  return result.rows[0].result;
 }
 
 const find = async (organisationId, client = pool) => {
-  const result = await client.query(`
+  const result = await client.query(wrap`
     select
       r.*,
       count(distinct ua.user_id) as user_count
     from 
       roles r left join
       user_areas ua on ua.role_id = r.id
-    where r.organisation_id = $1
+    where r.organisation_id = ${organisationId}
     group by r.id
-    order by r.name asc`, [organisationId]);
-  return result.rows;
+    order by r.name asc`);
+  return result.rows[0].result;
 }
 
 const remove = async (roleId, organisationId, client = pool) => {
-  await client.query(`
+  await client.query(sql`
     delete from roles
     where
-      id = $1 and
-      organisation_id = $2`, [roleId, organisationId]);
+      id = ${roleId} and
+      organisation_id = ${organisationId}`);
 }
 
 module.exports = {

@@ -1,23 +1,24 @@
 const getPool = require('../database/db');
+const { sql, wrap } = require('../utils/data');
 
 const pool = getPool();
 
 const insert = async ({
   name
 }, client = pool) => {
-  const result = await client.query(`
+  const result = await client.query(sql`
     insert into organisations(name)
-    values($1) 
-    returning id`, [name]);
+    values(${name}) 
+    returning id`);
   return result.rows[0].id;
 }
 
 const getById = async (id, client = pool) => {
-  const result = await client.query(`
+  const result = await client.query(wrap`
     select name
     from organisations
-    where id = $1`, [id]);
-  return result.rows[0];
+    where id = ${id}`);
+  return result.rows[0].result;
 }
 
 const update = async ({
@@ -27,18 +28,15 @@ const update = async ({
   await client.query(`
     update organisations
     set 
-      name = $1,
-      logo_image_id = $2
-    where id = $3`, [
-      name,
-      logoImageId,
-      organisationId]);
+      name = ${name},
+      logo_image_id = ${logoImageId}
+    where id = ${organisationId}`);
 }
 
 const deleteById = async (organisationId, client = pool) => {
-  await client.query(`
+  await client.query(sql`
     delete from organisations 
-    where id = $1`, [organisationId]);
+    where id = ${organisationId}`);
 }
 
 module.exports = {

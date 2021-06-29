@@ -1,4 +1,5 @@
 const getPool = require('../database/db');
+const { sql, wrap, subquery } = require('../utils/data');
 
 const pool = getPool();
 
@@ -14,7 +15,7 @@ const insert = async ({
   phone,
   pager
 }, organisationId, client = pool) => {
-  const result = await client.query(`
+  const result = await client.query(sql`
     insert into users(
       first_name,
       last_name,
@@ -27,8 +28,7 @@ const insert = async ({
       phone,
       pager,
       organisation_id)
-    values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-    returning id`, [
+    values(${[
       firstName,
       lastName,
       email,
@@ -39,20 +39,21 @@ const insert = async ({
       imageId,
       phone,
       pager,
-      organisationId]);
+      organisationId]})
+    returning id`);
   return result.rows[0].id;
 }
 
 const checkEmailExists = async (email, client = pool) => {
-  const result = await client.query(`
+  const result = await client.query(sql`
     select exists(
       select 1 from users 
-      where email = $1) as exists`, [email]);
+      where email = ${email}) as exists`);
   return result.rows[0].exists;
 }
 
 const getById = async (userId, organisationId, client = pool) => {
-  const result = await client.query(`
+  const result = await client.query(sql`
     select
       id,
       first_name,
@@ -61,28 +62,28 @@ const getById = async (userId, organisationId, client = pool) => {
       email_token
     from users
     where
-      id = $1 and
-      organisation_id = $2`, [userId, organisationId]);
+      id = ${userId} and
+      organisation_id = ${organisationId}`);
   return result.rows[0];
 }
 
 const setEmailToken = async (email, emailToken, client = pool) => {
-  const result = await client.query(`
+  const result = await client.query(sql`
     update users
     set
-      email_token = $2,
+      email_token = ${emailToken},
       email_token_expiry = now() + interval '1 day'
     where
-      email = $1 and
+      email = ${email} and
       is_disabled is false
     returning 
       id, 
-      first_name`, [email, emailToken]);
+      first_name`);
   return result.rows[0];
 }
 
 const getByEmail = async (email, client = pool) => {
-  const result = await client.query(`
+  const result = await client.query(wrap`
     select 
       u.id,
       u.first_name,
@@ -97,8 +98,8 @@ const getByEmail = async (email, client = pool) => {
       u.organisation_id,
       coalesce(json_agg(json_build_object(
         'id', a.area_id, 
-        'roleId', a.role_id,
-        'isAdmin', a.is_admin)) filter (where a.area_id is not null), json_build_array()) as areas
+        'role_id', a.role_id,
+        'is_admin', a.is_admin)) filter (where a.area_id is not null), json_build_array()) as areas
     from 
       users u left join
       user_areas a on 
@@ -106,15 +107,15 @@ const getByEmail = async (email, client = pool) => {
         a.start_time <= now() and
         (a.end_time is null or a.end_time > now())
     where
-      u.email = $1 and
+      u.email = ${email} and
       u.is_disabled is false and
       u.is_verified is true
-    group by u.id`, [email]);
-  return result.rows[0];
+    group by u.id`);
+  return result.rows[0].result;
 }
 
 const getUserDetails = async (userId, organisationId, client = pool) => {
-  const result = await client.query(`
+  const result = await client.query(sql`
     with areas_result as (
       select
         ua.user_id,
@@ -125,7 +126,7 @@ const getUserDetails = async (userId, organisationId, client = pool) => {
         roles r on ua.role_id = r.id join
         areas a on ua.area_id = a.id
       where
-        ua.user_id = $1 and
+        ua.user_id = ${userId} and
         ua.start_time <= now() and
         (ua.end_time is null or ua.end_time > now())
       group by ua.user_id),
@@ -138,67 +139,68 @@ const getUserDetails = async (userId, organisationId, client = pool) => {
         u.pager,
         u.image_id,
         coalesce(json_agg(json_build_object(
-          'fieldName', f.name,
-          'itemName', fi.name,
-          'textValue', uf.text_value,
-          'dateValue', uf.date_value) order by f.field_number asc) filter (where f.id is not null), json_build_array()) as fields
+          'field_name', f.name,
+          'item_name', fi.name,
+          'text_value', uf.text_value,
+          'date_value', uf.date_value) order by f.field_number asc) filter (where f.id is not null), json_build_array()) as fields
       from
         users u left join
         user_fields uf on uf.user_id = u.id left join
         fields f on uf.field_id = f.id left join
         field_items fi on uf.item_id = fi.id
       where 
-        u.id = $1 and 
-        u.organisation_id = $2
+        u.id = ${userId} and 
+        u.organisation_id = ${organisationId}
       group by u.id)
-    select
-      ur.*,
-      coalesce(ar.roles, json_build_array()) as roles,
-      coalesce(ar.areas, json_build_array()) as areas
-    from
-      user_result ur left join
-      areas_result ar on ur.user_id = ar.user_id`, [userId, organisationId]);
+    ${subquery`
+      select
+        ur.*,
+        coalesce(ar.roles, json_build_array()) as roles,
+        coalesce(ar.areas, json_build_array()) as areas
+      from
+        user_result ur left join
+        areas_result ar on ur.user_id = ar.user_id`}`);
   return result.rows[0];
 }
 
 const getTasks = async (organisationId, client = pool) => {
-  const result = await client.query(`
+  const result = await client.query(wrap`
     select 
-      not exists (select 1 from roles where organisation_id = $1) as needs_roles,
-      not exists (select 1 from locations where organisation_id = $1) as needs_locations,
-      not exists (select 1 from areas where organisation_id = $1) as needs_areas,
-      not exists (select 1 from user_roles where organisation_id = $1) as needs_users;`, [organisationId]);
-  return result.rows[0];
+      not exists (select 1 from roles where organisation_id = ${organisationId}) as needs_roles,
+      not exists (select 1 from locations where organisation_id = ${organisationId}) as needs_locations,
+      not exists (select 1 from areas where organisation_id = ${organisationId}) as needs_areas,
+      not exists (select 1 from user_roles where organisation_id = ${organisationId}) as needs_users;`);
+  return result.rows[0].result;
 }
 
 const getRefreshToken = async (userId, client = pool) => {
-  const result = await client.query(`
+  const result = await client.query(wrap`
       select refresh_token
       from users
-      where id = $1`, [userId]);
-  return result.rows[0].refreshToken;
+      where id = ${userId}`);
+  return result.rows[0].result;
 }
 
 const changePassword = async (hash, refreshToken, userId, client = pool) => {
-  await client.query(`
+  await client.query(sql`
     update users 
-    set password = $1, refresh_token = $2 
-    where id = $3`, [hash, refreshToken, userId]);
+    set password = ${hash}, refresh_token = ${refreshToken}
+    where id = ${userId}`);
 }
 
 const changePasswordWithToken = async (userId, emailToken, hash, client = pool) => {
-  const result = await client.query(`
+  const result = await client.query(sql`
     update users
     set 
-      password = $3,
+      password = ${hash},
       email_token = null,
       email_token_expiry = null,
       is_verified = true
     where
-      id = $1 and
-      email_token = $2 and
+      id = ${userId} and
+      email_token = ${emailToken} and
       email_token_expiry > now() and
-      is_disabled is false`, [userId, emailToken, hash]);
+      is_disabled is false`);
   return result.rowCount === 1;
 }
 
@@ -220,95 +222,77 @@ const find = async ({
   params.push(limit);
 
   if (!isAdmin) {
-    let areaIdParams = [];
-    for (const areaId of areaIds) {
-      params.push(areaId);
-      areaIdParams.push(`$${params.length}`);
-    }
-    where.push(`and a.id in (${areaIdParams.join(', ')})`);
+    where.push(sql`and a.id in (${areaIds})`);
   }
   if (searchTerm) {
-    params.push(`%${searchTerm}%`);
-    where.push(`and (
-      concat_ws(' ', u.first_name, u.last_name) ilike $${params.length} or
-      u.email ilike $${params.length})`);
+    searchTerm = `%${searchTerm}%`;
+    where.push(sql`and (
+      concat_ws(' ', u.first_name, u.last_name) ilike ${searchTerm} or
+      u.email ilike ${searchTerm})`);
   }
   if (roleId !== -1) {
-    params.push(roleId);
-    where.push(`and r.id = $${params.length}`);
+    where.push(sql`and r.id = ${roleId}`);
   }
   if (areaId !== -1) {
-    params.push(areaId);
-    where.push(`and a.id = $${params.length}`);
+    where.push(sql`and a.id = ${areaId}`);
   }
   if (activeDate) {
-    params.push(activeDate);
-    where.push(`and ua.start_time <= $${params.length} and (ua.end_time is null or ua.end_time > $${params.length})`);
+    where.push(sql`and ua.start_time <= ${activeDate} and (ua.end_time is null or ua.end_time > ${activeDate})`);
   }
   if (activeState !== 'All') {
     if (activeState === 'Current') {
-      having = 'having count(*) filter (where ua.start_time <= now() and (ua.end_time is null or ua.end_time > now())) > 0';
+      having = sql`having count(*) filter (where ua.start_time <= now() and (ua.end_time is null or ua.end_time > now())) > 0`;
     }
     else if (activeState === 'Future') {
-      having = 'having count(*) filter (where ua.start_time > now()) > 0';
+      having = sql`having count(*) filter (where ua.start_time > now()) > 0`;
     }
     else {
-      having = 'having count(*) filter (where ua.start_time < now() and ua.end_time < now()) > 0';
+      having = sql`having count(*) filter (where ua.start_time < now() and ua.end_time < now()) > 0`;
     }
   }
   if (lastUserId === -1) {
-    select.push('count(*) over() as total_count,');
+    select.push(sql`count(*) over() as total_count,`);
   }
   else {
-    params.push(lastUserId);
-    where.push(`and u.id < $${params.length}`);
+    where.push(sql`and u.id < ${lastUserId}`);
   }
-  const result = await client.query(`
+  const result = await client.query(sql`
     with shift_result as (
       select
         b.user_id,
         count(*) as booked,
-        count(*) filter (where s.start_time <= now()) as attended
+        count(*) filter (where s.start_time <= now()) as attended,
+        sum(s.end_time - s.start_time) filter (where s.start_time <= now()) as attended_time
       from
         bookings b join
         shift_roles sr on b.shift_role_id = sr.id join
         shifts s on sr.shift_id = s.id
       group by b.user_id)
-    select 
-      u.id,
-      concat_ws(' ', u.first_name, u.last_name) as name,
-      u.image_id,
-      ${select.join('')}
-      json_agg(distinct ua.role_id) as role_ids,
-      json_agg(distinct a.abbreviation) as area_names,
-      coalesce(s.booked, 0) as booked,
-      coalesce(s.attended, 0) as attended
-    from 
-      user_areas ua join
-      users u on ua.user_id = u.id join
-      areas a on ua.area_id = a.id join
-      roles r on ua.role_id = r.id left join
-      shift_result s on s.user_id = u.id
-    where
-      u.organisation_id = $1
-      ${where.join(' ')}
-    group by u.id, s.booked, s.attended
-    ${having}
-    order by u.id desc
-    limit $2`, params);
-  if (result.rows.length === 0) {
-    return {
-      users: [],
-      count: 0
-    };
-  }
-  else {
-    const count = lastUserId === -1 ? result.rows[0].totalCount : -1;
-    return {
-      users: result.rows,
-      count
-    };
-  }
+    ${subquery`
+      select 
+        u.id,
+        concat_ws(' ', u.first_name, u.last_name) as name,
+        u.image_id,
+        ${select}
+        json_agg(distinct ua.role_id) as role_ids,
+        json_agg(distinct a.abbreviation) as area_names,
+        coalesce(s.booked, 0) as booked,
+        coalesce(s.attended, 0) as attended,
+        to_char(coalesce(s.attended_time, interval '0 hours'), 'HH24:MI') as attended_time
+      from 
+        user_areas ua join
+        users u on ua.user_id = u.id join
+        areas a on ua.area_id = a.id join
+        roles r on ua.role_id = r.id left join
+        shift_result s on s.user_id = u.id
+      where
+        u.organisation_id = ${organisationId}
+        ${where}
+      group by u.id, s.booked, s.attended, s.attended_time
+      ${having}
+      order by u.id desc
+      limit ${limit}`}`);
+  return result.rows[0].result;
 }
 
 const updateImageByPrimaryField = async ({
@@ -316,14 +300,14 @@ const updateImageByPrimaryField = async ({
   fieldName,
   fieldValue
 }, overwrite, organisationId, client = pool) => {
-  const where = overwrite ? '' : ' and u.image_id is null';
-  const result = await client.query(`
+  fieldName = sql`${fieldName}`;
+  const result = await client.query(sql`
     update users u
-    set image_id = $1
+    set image_id = ${fileId}
     where
-      u.organisation_id = $3 and
-      u.${fieldName} = $2
-      ${where}`, [fileId, fieldValue, organisationId]);
+      u.organisation_id = ${organisationId} and
+      u.${fieldName} = ${fieldValue}
+      ${overwrite ? sql`` : sql` and u.image_id is null`}`);
   return result;
 }
 
@@ -332,32 +316,31 @@ const updateImageByCustomField = async ({
   fieldName,
   fieldValue
 }, overwrite, organisationId, client = pool) => {
-  const where = overwrite ? '' : ' and u.image_id is null';
   const result = await client.query(`
     update users u
-    set image_id = $1
+    set image_id = ${fileId}
     from 
       user_fields uf,
       fields f
     where
       uf.user_id = u.id and
       uf.field_id = f.id and
-      u.organisation_id = $4 and
-      f.name = $2 and
-      uf.text_value = $3
-      ${where}`, [fileId, fieldName, fieldValue, organisationId]);
+      u.organisation_id = ${organisationId} and
+      f.name = ${fieldName} and
+      uf.text_value = ${fieldValue}
+      ${overwrite ? sql`` : sql` and u.image_id is null`}`);
   return result;
 }
 
 const resetFailedPasswordAttempts = async (userId, client = pool) => {
-  await client.query(`
+  await client.query(sql`
     update users
     set failed_password_attempts = 0
-    where id = $1`, [userId, amount]);
+    where id = ${userId}`);
 }
 
 const incrementFailedPasswordAttempts = async (userId, client = pool) => {
-  await client.query(`
+  await client.query(sql`
     update users
     set 
       failed_password_attempts = failed_password_attempts + 1,
@@ -365,55 +348,55 @@ const incrementFailedPasswordAttempts = async (userId, client = pool) => {
         (failed_password_attempts + 1) = 5 then true
         else is_disabled end
     where
-      id = $1 and
-      is_disabled is false`, [userId]);
+      id = ${userId} and
+      is_disabled is false`);
 }
 
 const disable = async (userId, client = pool) => {
-  await client.query(`
+  await client.query(sql`
     update users
     set is_disabled = true
-    where id = $1`, [userId]);
+    where id = ${userId}`);
 }
 
 const enable = async (userId, client = pool) => {
-  await client.query(`
+  await client.query(sql`
     update users
     set is_disabled = false
-    where id = $1`, [userId]);
+    where id = ${userId}`);
 }
 
 const verify = async (userId, emailToken, client = pool) => {
-  const result = await client.query(`
+  const result = await client.query(sql`
     update users
     set 
       is_verified = true,
       email_token = null,
       email_token_expiry = null
     where
-      id = $1 and
+      id = ${userId} and
       is_disabled is false and
       is_verified is false and
       email_token is not null and
-      email_token = $2 and
-      email_token_expiry > now()`, [userId, emailToken]);
+      email_token = ${emailToken} and
+      email_token_expiry > now()`);
   return result.rowCount === 1;
 }
 
 const getPassword = async (userId, client = pool) => {
-  const result = await client.query(`
+  const result = await client.query(sql`
     select password from users 
-    where id = $1`, [userId]);
+    where id = ${userId}`);
   return result.rows[0].password;
 }
 
 const remove = async (userId, organisationId, client = pool) => {
-  await client.query(`
+  await client.query(sql`
     delete from users
     where 
-      id = $1 and
-      organisation_id = $2 and
-      is_admin is false`, [userId, organisationId]);
+      id = ${userId} and
+      organisation_id = ${organisationId} and
+      is_admin is false`);
 }
 
 module.exports = {

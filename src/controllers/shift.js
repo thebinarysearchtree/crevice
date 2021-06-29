@@ -53,7 +53,7 @@ const insert = async (req, res) => {
 const find = async (req, res) => {
   const query = req.body;
   const shifts = await db.shifts.find(query, req.user.organisationId);
-  return res.json(shifts);
+  return res.send(shifts);
 }
 
 module.exports = {

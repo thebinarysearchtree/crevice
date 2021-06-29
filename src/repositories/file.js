@@ -1,4 +1,5 @@
 const getPool = require('../database/db');
+const { sql, wrap } = require('../utils/data');
 
 const pool = getPool();
 
@@ -9,7 +10,7 @@ const insert = async ({
   sizeBytes,
   mimeType
 }, userId, organisationId, client = pool) => {
-  const result = await client.query(`
+  const result = await client.query(sql`
     insert into files(
       id,
       filename,
@@ -18,24 +19,24 @@ const insert = async ({
       mime_type,
       uploaded_by,
       organisation_id)
-    values($1, $2, $3, $4, $5, $6, $7)`, [
+    values(${[
       fileId, 
       filename, 
       originalName, 
       sizeBytes, 
       mimeType, 
       userId, 
-      organisationId]);
+      organisationId]})`);
   return result;
 }
 
 const getById = async (fileId, organisationId, client = pool) => {
-  const result = await client.query(`
+  const result = await client.query(wrap`
     select * from files
     where
-      id = $1 and
-      organisation_id = $2`, [fileId, organisationId]);
-  return result.rows[0];
+      id = ${fileId} and
+      organisation_id = ${organisationId}`, [fileId, organisationId]);
+  return result.rows[0].result;
 }
 
 module.exports = {

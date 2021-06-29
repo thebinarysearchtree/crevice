@@ -493,7 +493,7 @@ const find = async (req, res) => {
   const user = req.user;
   const areaIds = user.isAdmin ? [] : user.areas.filter(a => a.isAdmin).map(a => a.id);
   const result = await db.users.find(query, user.isAdmin, areaIds, user.organisationId);
-  return res.json(result);
+  return res.send(result);
 }
 
 const getUserDetails = async (req, res) => {

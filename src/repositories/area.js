@@ -1,4 +1,5 @@
 const getPool = require('../database/db');
+const { sql, wrap } = require('../utils/data');
 
 const pool = getPool();
 
@@ -8,25 +9,20 @@ const insert = async ({
   locationId,
   notes
 }, organisationId, client = pool) => {
-  const result = await client.query(`
+  const result = await client.query(sql`
     insert into areas(
       name,
       abbreviation,
       location_id,
       notes,
       organisation_id)
-    select $1, $2, $3, $4, $5
+    select ${[name, abbreviation, locationId, notes, organisationId]}
     where exists(
       select 1 from locations
       where
-        id = $3 and
-        organisation_id = $5)
-    returning id`, [
-      name,
-      abbreviation,
-      locationId,
-      notes,
-      organisationId]);
+        id = ${locationId} and
+        organisation_id = ${organisationId})
+    returning id`);
   return result.rows[0].id;
 }
 
@@ -37,40 +33,34 @@ const update = async ({
   locationId,
   notes
 }, organisationId, client = pool) => {
-  await client.query(`
+  await client.query(sql`
     update areas
     set
-      name = $2,
-      abbreviation = $3,
-      location_id = $4,
-      notes = $5
+      name = ${name},
+      abbreviation = ${abbreviation},
+      location_id = ${locationId},
+      notes = ${notes}
     where
-      id = $1 and
-      organisation_id = $6 and
+      id = ${id} and
+      organisation_id = ${organisationId} and
       exists(
         select 1 from locations
         where
-          id = $4 and
-          organisation_id = $6))`, [
-        id,
-        name,
-        abbreviation,
-        locationId,
-        notes,
-        organisationId]);
+          id = ${locationId} and
+          organisation_id = ${organisationId}))`);
 }
 
 const getById = async (areaId, organisationId, client = pool) => {
-  const result = await client.query(`
+  const result = await client.query(wrap`
     select * from areas
     where 
-      id = $1 and 
-      organisation_id = $2`, [areaId, organisationId]);
-  return result.rows[0];
+      id = ${areaId} and 
+      organisation_id = ${organisationId}`);
+  return result.rows[0].result;
 }
 
 const getWithLocation = async (organisationId, client = pool) => {
-  const result =  await client.query(`
+  const result =  await client.query(wrap`
     select
       l.id,
       l.name,
@@ -79,28 +69,28 @@ const getWithLocation = async (organisationId, client = pool) => {
         'id', a.id,
         'name', a.name,
         'abbreviation', a.abbreviation,
-        'timeZone', l.time_zone) order by a.abbreviation asc) as areas
+        'time_zone', l.time_zone) order by a.abbreviation asc) as areas
     from
       areas a join
       locations l on a.location_id = l.id
-    where a.organisation_id = $1
+    where a.organisation_id = ${organisationId}
     group by l.id
-    order by l.name asc`, [organisationId]);
-  return result.rows;
+    order by l.name asc`);
+  return result.rows[0].result;
 }
 
 const getSelectListItems = async (isAdmin, userId, organisationId, client = pool) => {
   if (isAdmin) {
-    const result = await client.query(`
+    const result = await client.query(wrap`
       select 
         id, 
         abbreviation as name
       from areas 
-      where organisation_id = $1
-      order by abbreviation desc`, [organisationId]);
-    return result.rows;
+      where organisation_id = ${organisationId}
+      order by abbreviation desc`);
+    return result.rows[0].result;
   }
-  const result = await client.query(`
+  const result = await client.query(wrap`
     select 
       a.id, 
       a.abbreviation as name
@@ -108,23 +98,23 @@ const getSelectListItems = async (isAdmin, userId, organisationId, client = pool
       user_areas ua join
       areas a on ua.area_id = a.id 
     where 
-      ua.user_id = $1 and
-      ua.organisation_id = $2 and
+      ua.user_id = ${userId} and
+      ua.organisation_id = ${organisationId} and
       ua.is_admin is true and
       ua.start_time <= now() and (ua.end_time > now() or ua.end_time is null)
-    order by a.abbreviation desc`, [userId, organisationId]);
-  return result.rows;
+    order by a.abbreviation desc`);
+  return result.rows[0].result;
 }
 
 const find = async (organisationId, client = pool) => {
-  const result = await client.query(`
+  const result = await client.query(wrap`
     select
       a.*,
       l.abbreviation as location_name,
       coalesce(json_agg(json_build_object(
         'id', u.id,
         'name', concat_ws(' ', u.first_name, u.last_name),
-        'imageId', u.image_id)) filter (where ua.is_admin is true), json_build_array()) as administrators,
+        'image_id', u.image_id)) filter (where ua.is_admin is true), json_build_array()) as administrators,
       count(*) filter (where ua.user_id is not null) as active_user_count
     from 
       areas a join
@@ -134,23 +124,23 @@ const find = async (organisationId, client = pool) => {
         ua.start_time <= now() and
         (ua.end_time is null or ua.end_time > now()) left join
       users u on ua.user_id = u.id
-    where a.organisation_id = $1
+    where a.organisation_id = ${organisationId}
     group by
       a.id,
       l.name,
       l.abbreviation
     order by
       l.name asc,
-      a.name asc`, [organisationId]);
-  return result.rows;
+      a.name asc`);
+  return result.rows[0].result;
 }
 
 const remove = async (areaId, organisationId, client = pool) => {
-  await client.query(`
+  await client.query(sql`
     delete from areas
     where
-      id = $1 and
-      organisation_id = $2`, [areaId, organisationId]);
+      id = ${areaId} and
+      organisation_id = ${organisationId}`);
 }
 
 module.exports = {
