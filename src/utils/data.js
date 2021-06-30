@@ -1,13 +1,27 @@
-const completeWrap = (sql) => {
-  return `
-    with wrap_result as (${sql}) 
-    select cast(coalesce(json_agg(wrap_result), json_build_array()) as text) as result 
-    from wrap_result`;
+const reviver = (key, value, context) => {
+  if (key.includes('_')) {
+    const renamedKey = key.replace(/_[a-z]/g, (s) => s[1].toUpperCase());
+    context[renamedKey] = value;
+  }
+  else {
+    return value;
+  }
 }
 
-const subqueryWrap = (sql) => {
+const makeReviver = (parser) => {
+  if (!parser) {
+    return function(key, value) {
+      return reviver(key, value, this);
+    }
+  }
+  return function(key, value) {
+    return reviver(key, parser(key, value), this);
+  }
+}
+
+const wrapper = (sql) => {
   return `
-    , wrap_result as (${sql}) 
+    with wrap_result as (${sql}) 
     select cast(coalesce(json_agg(wrap_result), json_build_array()) as text) as result 
     from wrap_result`;
 }
@@ -37,7 +51,7 @@ const sqlTag = (strings, params, wrapper) => {
           a.text += c;
           for (const query of param) {
             a.values = a.values.concat(query.values);
-            const text = query.text.replace(/\$(\d+)/mg, (m, n) => `$${parseInt(n, 10) + index}`);
+            const text = query.text.replace(/\$(\d+)/mg, (m, n) => `$${parseInt(n, 10) + (index - 1)}`);
             a.text += text;
             index += query.values.length;
           }
@@ -52,7 +66,7 @@ const sqlTag = (strings, params, wrapper) => {
     }
     if (param instanceof Query) {
       a.values = a.values.concat(param.values);
-      const text = param.text.replace(/\$(\d+)/mg, (m, n) => `$${parseInt(n, 10) + index}`);
+      const text = param.text.replace(/\$(\d+)/mg, (m, n) => `$${parseInt(n, 10) + (index - 1)}`);
       a.text += `${c}${text}`;
       index += param.values.length;
       return a;
@@ -69,11 +83,10 @@ const sqlTag = (strings, params, wrapper) => {
 }
 
 const sql = (strings, ...params) => sqlTag(strings, params);
-const wrap = (strings, ...params) => sqlTag(strings, params, completeWrap);
-const subquery = (strings, ...params) => sqlTag(strings, params, subqueryWrap);
+const wrap = (strings, ...params) => sqlTag(strings, params, wrapper);
 
 module.exports = {
   sql,
   wrap,
-  subquery
+  makeReviver
 };

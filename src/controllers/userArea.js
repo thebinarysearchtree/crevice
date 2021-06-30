@@ -24,7 +24,7 @@ const insertMany = async (req, res) => {
     await Promise.all(promises);
     const updatedAreas = await db.userAreas.find(userId, req.user.organisationId, client);
     await client.query('commit');
-    return res.json(updatedAreas);
+    return res.send(updatedAreas);
   }
   catch (e) {
     await client.query('rollback');
@@ -44,7 +44,7 @@ const update = async (req, res) => {
 const find = async (req, res) => {
   const { userId } = req.body;
   const userAreas = await db.userAreas.find(userId, req.user.organisationId);
-  return res.json(userAreas);
+  return res.send(userAreas);
 }
 
 const remove = async (req, res) => {

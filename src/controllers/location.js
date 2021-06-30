@@ -19,17 +19,17 @@ const update = async (req, res) => {
 const getById = async (req, res) => {
   const { locationId } = req.body;
   const location = await db.locations.getById(locationId, req.user.organisationId);
-  return res.json(location);
+  return res.send(location);
 }
 
 const getSelectListItems = async (req, res) => {
   const selectListItems = await db.locations.getSelectListItems(req.user.organisationId);
-  return res.json(selectListItems);
+  return res.send(selectListItems);
 }
 
 const find = async (req, res) => {
   const locations = await db.locations.find(req.user.organisationId);
-  return res.json(locations);
+  return res.send(locations);
 }
 
 const remove = async (req, res) => {

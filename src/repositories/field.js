@@ -1,5 +1,7 @@
 const getPool = require('../database/db');
-const { sql, wrap, subquery } = require('../utils/data');
+const { sql, wrap, makeReviver } = require('../utils/data');
+
+const reviver = makeReviver();
 
 const pool = getPool();
 
@@ -70,13 +72,13 @@ const getById = async (fieldId, organisationId, client = pool) => {
 }
 
 const getFilenameFields = async (organisationId, client = pool) => {
-  const result = await client.query(sql`
+  const result = await client.query(wrap`
     select name
     from fields
     where
       organisation_id = ${organisationId} and
       field_type in ('Short', 'Standard', 'Number')`);
-  return result.rows.map(f => f.name);
+  return result.rows[0].result;
 }
 
 const getCsvFields = async (organisationId, client = pool) => {
@@ -85,7 +87,7 @@ const getCsvFields = async (organisationId, client = pool) => {
     where 
       organisation_id = ${organisationId} and
       field_type in ('Short', 'Standard', 'Number', 'Select')`);
-  return result.rows[0].result;
+  return JSON.parse(result.rows[0].result, reviver);
 }
 
 const getAllFields = async (organisationId, client = pool) => {
@@ -111,42 +113,43 @@ const getSelectListItems = async (organisationId, client = pool) => {
     from fields
     where organisation_id = ${organisationId}
     order by field_number asc`);
-  return result.rows;
+  return result.rows[0].result;
 }
 
 const find = async (organisationId, client = pool) => {
-  const result = await client.query(sql`
-    with items_result as (
-      select
-        field_id,
-        json_agg(json_build_object(
-          'id', id,
-          'name', name,
-          'item_number', item_number) order by item_number asc) as select_items
-      from field_items
-      group by field_id),
-    fields_result as (
-      select
-        f.id,
-        f.name,
-        f.field_type,
-        f.field_number,
-        count(*) filter (where uf.id is not null) as user_count
-      from
-        fields f left join
-        user_fields uf on uf.field_id = f.id left join
-        users u on uf.user_id = u.id
-      where f.organisation_id = ${organisationId}
-      group by f.id
-      order by f.field_number asc)
-    ${subquery`
-      select
-        f.*,
-        coalesce(i.select_items, json_build_array()) as select_items
-      from
-        fields_result f left join
-        items_result i on f.id = i.field_id
-      order by f.field_number asc`}`);
+  const itemsQuery = sql`
+    select
+      field_id,
+      json_agg(json_build_object(
+        'id', id,
+        'name', name,
+        'item_number', item_number) order by item_number asc) as select_items
+    from field_items
+    group by field_id`;
+  
+  const fieldsQuery = sql`
+    select
+      f.id,
+      f.name,
+      f.field_type,
+      f.field_number,
+      count(*) filter (where uf.id is not null) as user_count
+    from
+      fields f left join
+      user_fields uf on uf.field_id = f.id left join
+      users u on uf.user_id = u.id
+    where f.organisation_id = ${organisationId}
+    group by f.id
+    order by f.field_number asc`;
+
+  const result = await client.query(wrap`
+    select
+      f.*,
+      coalesce(i.select_items, json_build_array()) as select_items
+    from
+      (${fieldsQuery}) as f left join
+      (${itemsQuery}) as i on f.id = i.field_id
+    order by f.field_number asc`);
   return result.rows[0].result;
 }
 

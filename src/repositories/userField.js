@@ -1,4 +1,5 @@
 const getPool = require('../database/db');
+const { sql } = require('../utils/data');
 
 const pool = getPool();
 
@@ -11,13 +12,7 @@ const insert = async ({
   if (!itemId && !textValue && !dateValue) {
     throw new Error();
   }
-  const where = itemId ? `where exists(
-    select 1 from field_items 
-    where
-      id = $3 and
-      field_id = $2 and
-      organisation_id = $6)` : '';
-  await client.query(`
+  await client.query(sql`
     insert into user_fields(
       user_id,
       field_id,
@@ -25,8 +20,14 @@ const insert = async ({
       text_value,
       date_value,
       organisation_id)
-    select $1, $2, $3, $4, $5, $6
-    ${where}`, [userId, fieldId, itemId, textValue, dateValue, organisationId]);
+    select ${[userId, fieldId, itemId, textValue, dateValue, organisationId]}
+    ${itemId ? sql`
+    where exists(
+      select 1 from field_items 
+      where
+        id = ${itemId} and
+        field_id = ${fieldId} and
+        organisation_id = ${organisationId})` : sql``}`);
 }
 
 module.exports = {

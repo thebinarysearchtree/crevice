@@ -1,5 +1,5 @@
 const getPool = require('../database/db');
-const { sql, wrap, subquery } = require('../utils/data');
+const { sql, wrap } = require('../utils/data');
 
 const pool = getPool();
 
@@ -37,43 +37,43 @@ const find = async ({
   startTime,
   endTime
 }, organisationId, client = pool) => {
-  const result = await client.query(sql`
-    with role_result as (
-      select
-        sr.shift_id,
-        sr.role_id,
-        sr.capacity,
-        count(*) filter (where b.id is not null) as booked_count,
-        json_agg(json_build_object(
-          'user_id', b.user_id,
-          'name', concat_ws(' ', u.first_name, u.last_name),
-          'image_id', u.image_id)) filter (where b.id is not null) as booked_users
-      from
-        shifts s join
-        shift_roles sr on sr.shift_id = s.id left join
-        bookings b on b.shift_role_id = sr.id left join
-        users u on b.user_id = u.id
-      where
-        s.area_id = ${areaId} and
-        s.start_time >= ${startTime} and
-        s.start_time < ${endTime} and
-        s.organisation_id = ${organisationId}
-      group by sr.id)
-    ${subquery`
-      select
-        s.id,
-        s.start_time at time zone l.time_zone as start_time,
-        s.end_time at time zone l.time_zone as end_time,
-        json_agg(sr) as shift_roles,
-        sum(sr.capacity) as capacity,
-        sum(sr.booked_count) as booked
-      from
-        shifts s join
-        role_result sr on sr.shift_id = s.id join
-        areas a on s.area_id = a.id join
-        locations l on a.location_id = l.id
-      group by s.id, l.time_zone
-      order by s.start_time asc`}`);
+  const shiftRolesQuery = sql`
+    select
+      sr.shift_id,
+      sr.role_id,
+      sr.capacity,
+      count(*) filter (where b.id is not null) as booked_count,
+      json_agg(json_build_object(
+        'user_id', b.user_id,
+        'name', concat_ws(' ', u.first_name, u.last_name),
+        'image_id', u.image_id)) filter (where b.id is not null) as booked_users
+    from
+      shifts s join
+      shift_roles sr on sr.shift_id = s.id left join
+      bookings b on b.shift_role_id = sr.id left join
+      users u on b.user_id = u.id
+    where
+      s.area_id = ${areaId} and
+      s.start_time >= ${startTime} and
+      s.start_time < ${endTime} and
+      s.organisation_id = ${organisationId}
+    group by sr.id`;
+
+  const result = await client.query(wrap`
+    select
+      s.id,
+      s.start_time at time zone l.time_zone as start_time,
+      s.end_time at time zone l.time_zone as end_time,
+      json_agg(sr) as shift_roles,
+      sum(sr.capacity) as capacity,
+      sum(sr.booked_count) as booked
+    from
+      shifts s join
+      (${shiftRolesQuery}) as sr on sr.shift_id = s.id join
+      areas a on s.area_id = a.id join
+      locations l on a.location_id = l.id
+    group by s.id, l.time_zone
+    order by s.start_time asc`);
   return result.rows[0].result;
 }
 

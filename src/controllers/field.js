@@ -35,7 +35,7 @@ const insert = async (req, res) => {
     }
     const savedField = await db.fields.getById(fieldId, organisationId, client);
     await client.query('commit');
-    return res.json(savedField);
+    return res.send(savedField);
   }
   catch (e) {
     await client.query('rollback');
@@ -79,7 +79,7 @@ const update = async (req, res) => {
     }
     const updatedField = await db.fields.getById(fieldId, organisationId, client);
     await client.query('commit');
-    return res.json(updatedField);
+    return res.send(updatedField);
   }
   catch (e) {
     await client.query('rollback');
@@ -99,32 +99,32 @@ const moveUp = async (req, res) => {
 const getById = async (req, res) => {
   const { fieldId } = req.body;
   const field = await db.fields.getById(fieldId, req.user.organisationId);
-  return res.json(field);
+  return res.send(field);
 }
 
 const getFilenameFields = async (req, res) => {
   const fields = await db.fields.getFilenameFields(req.user.organisationId);
-  return res.json(fields);
+  return res.send(fields);
 }
 
 const getCsvFields = async (req, res) => {
   const fields = await db.fields.getCsvFields(req.user.organisationId);
-  return res.json(fields);
+  return res.send(fields);
 }
 
 const getAllFields = async (req, res) => {
   const fields = await db.fields.getAllFields(req.user.organisationId);
-  return res.json(fields);
+  return res.send(fields);
 }
 
 const getSelectListItems = async (req, res) => {
   const selectListItems = await db.fields.getSelectListItems(req.user.organisationId);
-  return res.json(selectListItems);
+  return res.send(selectListItems);
 }
 
 const find = async (req, res) => {
   const fields = await db.fields.find(req.user.organisationId);
-  return res.json(fields);
+  return res.send(fields);
 }
 
 const remove = async (req, res) => {

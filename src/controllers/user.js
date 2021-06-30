@@ -14,7 +14,6 @@ const mailer = require('../services/emailTemplate');
 const populate = require('../database/populate');
 const parseCSV = require('csv-parse');
 const fs = require('fs').promises;
-const { validate: uuidValidate } = require('uuid');
 
 const db = {
   users: userRepository,
@@ -353,7 +352,7 @@ const resendInvitation = async (req, res) => {
 
 const lostPassword = async (req, res) => {
   const { email, organisationId } = req.body;
-  const { id: userId, firstName } = await db.users.setEmailToken(email, uuid());
+  const { userId, firstName } = await db.users.setEmailToken(email, uuid());
   const url = `https://${config.host}/lostpassword/${userId}/${emailToken}`;
   const emailUser = {
     email,
@@ -499,7 +498,7 @@ const find = async (req, res) => {
 const getUserDetails = async (req, res) => {
   const { userId } = req.body;
   const userDetails = await db.users.getUserDetails(userId, req.user.organisationId);
-  return res.json(userDetails);
+  return res.send(userDetails);
 }
 
 const changeImage = async (req, res) => {

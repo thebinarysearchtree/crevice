@@ -1,21 +1,8 @@
 const pg = require('pg');
-const { Pool, types } = pg;
+const { Pool } = pg;
 const { database: config } = require('../../config');
 
-const handleRowDescription = pg.Query.prototype.handleRowDescription;
-
-pg.Query.prototype.handleRowDescription = function(msg) {
-  msg.fields.forEach(field => {
-    const name = field.name.replace(/_[a-z]/g, (s) => s.substring(1).toUpperCase());
-    field.name = name;
-  });
-  return handleRowDescription.call(this, msg);
-}
-
 let pool = null;
-
-types.setTypeParser(20, (value) => parseInt(value, 10));
-types.setTypeParser(1700, (value) => Number(value));
 
 const getPool = () => {
   if (!pool) {

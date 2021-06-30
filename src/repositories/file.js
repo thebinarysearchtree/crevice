@@ -1,5 +1,7 @@
 const getPool = require('../database/db');
-const { sql, wrap } = require('../utils/data');
+const { sql, wrap, makeReviver } = require('../utils/data');
+
+const reviver = makeReviver();
 
 const pool = getPool();
 
@@ -36,7 +38,7 @@ const getById = async (fileId, organisationId, client = pool) => {
     where
       id = ${fileId} and
       organisation_id = ${organisationId}`, [fileId, organisationId]);
-  return result.rows[0].result;
+  return JSON.parse(result.rows[0].result, reviver)[0];
 }
 
 module.exports = {

@@ -1,5 +1,7 @@
 const getPool = require('../database/db');
-const { sql, wrap, subquery } = require('../utils/data');
+const { sql, wrap, makeReviver } = require('../utils/data');
+
+const reviver = makeReviver();
 
 const pool = getPool();
 
@@ -53,7 +55,7 @@ const checkEmailExists = async (email, client = pool) => {
 }
 
 const getById = async (userId, organisationId, client = pool) => {
-  const result = await client.query(sql`
+  const result = await client.query(wrap`
     select
       id,
       first_name,
@@ -64,7 +66,7 @@ const getById = async (userId, organisationId, client = pool) => {
     where
       id = ${userId} and
       organisation_id = ${organisationId}`);
-  return result.rows[0];
+  return JSON.parse(result.rows[0].result, reviver)[0];
 }
 
 const setEmailToken = async (email, emailToken, client = pool) => {
@@ -79,7 +81,8 @@ const setEmailToken = async (email, emailToken, client = pool) => {
     returning 
       id, 
       first_name`);
-  return result.rows[0];
+  const { id: userId, first_name: firstName } = result.rows[0];
+  return { userId, firstName };
 }
 
 const getByEmail = async (email, client = pool) => {
@@ -111,56 +114,57 @@ const getByEmail = async (email, client = pool) => {
       u.is_disabled is false and
       u.is_verified is true
     group by u.id`);
-  return result.rows[0].result;
+  return JSON.parse(result.rows[0].result, reviver)[0];
 }
 
 const getUserDetails = async (userId, organisationId, client = pool) => {
-  const result = await client.query(sql`
-    with areas_result as (
-      select
-        ua.user_id,
-        json_agg(distinct r.name) as roles,
-        json_agg(distinct a.abbreviation) as areas
-      from
-        user_areas ua join
-        roles r on ua.role_id = r.id join
-        areas a on ua.area_id = a.id
-      where
-        ua.user_id = ${userId} and
-        ua.start_time <= now() and
-        (ua.end_time is null or ua.end_time > now())
-      group by ua.user_id),
-    user_result as (
-      select
-        u.id as user_id,
-        concat_ws(' ', u.first_name, u.last_name) as name,
-        u.email,
-        u.phone,
-        u.pager,
-        u.image_id,
-        coalesce(json_agg(json_build_object(
-          'field_name', f.name,
-          'item_name', fi.name,
-          'text_value', uf.text_value,
-          'date_value', uf.date_value) order by f.field_number asc) filter (where f.id is not null), json_build_array()) as fields
-      from
-        users u left join
-        user_fields uf on uf.user_id = u.id left join
-        fields f on uf.field_id = f.id left join
-        field_items fi on uf.item_id = fi.id
-      where 
-        u.id = ${userId} and 
-        u.organisation_id = ${organisationId}
-      group by u.id)
-    ${subquery`
-      select
-        ur.*,
-        coalesce(ar.roles, json_build_array()) as roles,
-        coalesce(ar.areas, json_build_array()) as areas
-      from
-        user_result ur left join
-        areas_result ar on ur.user_id = ar.user_id`}`);
-  return result.rows[0];
+  const areasQuery = sql`
+    select
+      ua.user_id,
+      json_agg(distinct r.name) as roles,
+      json_agg(distinct a.abbreviation) as areas
+    from
+      user_areas ua join
+      roles r on ua.role_id = r.id join
+      areas a on ua.area_id = a.id
+    where
+      ua.user_id = ${userId} and
+      ua.start_time <= now() and
+      (ua.end_time is null or ua.end_time > now())
+    group by ua.user_id`;
+
+  const usersQuery = sql`
+    select
+      u.id as user_id,
+      concat_ws(' ', u.first_name, u.last_name) as name,
+      u.email,
+      u.phone,
+      u.pager,
+      u.image_id,
+      coalesce(json_agg(json_build_object(
+        'field_name', f.name,
+        'item_name', fi.name,
+        'text_value', uf.text_value,
+        'date_value', uf.date_value) order by f.field_number asc) filter (where f.id is not null), json_build_array()) as fields
+    from
+      users u left join
+      user_fields uf on uf.user_id = u.id left join
+      fields f on uf.field_id = f.id left join
+      field_items fi on uf.item_id = fi.id
+    where 
+      u.id = ${userId} and 
+      u.organisation_id = ${organisationId}
+    group by u.id`;
+  
+  const result = await client.query(wrap`
+    select
+      ur.*,
+      coalesce(ar.roles, json_build_array()) as roles,
+      coalesce(ar.areas, json_build_array()) as areas
+    from
+      (${usersQuery}) as ur left join
+      (${areasQuery}) as ar on ur.user_id = ar.user_id`);
+  return result.rows[0].result;
 }
 
 const getTasks = async (organisationId, client = pool) => {
@@ -212,14 +216,10 @@ const find = async ({
   activeState,
   lastUserId
 }, isAdmin, areaIds, organisationId, client = pool) => {
-  const params = [organisationId];
-
   const select = [];
   const where = [];
-  let having = '';
-
   const limit = 10;
-  params.push(limit);
+  let having = sql``;
 
   if (!isAdmin) {
     where.push(sql`and a.id in (${areaIds})`);
@@ -256,42 +256,43 @@ const find = async ({
   else {
     where.push(sql`and u.id < ${lastUserId}`);
   }
-  const result = await client.query(sql`
-    with shift_result as (
-      select
-        b.user_id,
-        count(*) as booked,
-        count(*) filter (where s.start_time <= now()) as attended,
-        sum(s.end_time - s.start_time) filter (where s.start_time <= now()) as attended_time
-      from
-        bookings b join
-        shift_roles sr on b.shift_role_id = sr.id join
-        shifts s on sr.shift_id = s.id
-      group by b.user_id)
-    ${subquery`
-      select 
-        u.id,
-        concat_ws(' ', u.first_name, u.last_name) as name,
-        u.image_id,
-        ${select}
-        json_agg(distinct ua.role_id) as role_ids,
-        json_agg(distinct a.abbreviation) as area_names,
-        coalesce(s.booked, 0) as booked,
-        coalesce(s.attended, 0) as attended,
-        to_char(coalesce(s.attended_time, interval '0 hours'), 'HH24:MI') as attended_time
-      from 
-        user_areas ua join
-        users u on ua.user_id = u.id join
-        areas a on ua.area_id = a.id join
-        roles r on ua.role_id = r.id left join
-        shift_result s on s.user_id = u.id
-      where
-        u.organisation_id = ${organisationId}
-        ${where}
-      group by u.id, s.booked, s.attended, s.attended_time
-      ${having}
-      order by u.id desc
-      limit ${limit}`}`);
+
+  const shiftsQuery = sql`
+    select
+      b.user_id,
+      count(*) as booked,
+      count(*) filter (where s.start_time <= now()) as attended,
+      sum(s.end_time - s.start_time) filter (where s.start_time <= now()) as attended_time
+    from
+      bookings b join
+      shift_roles sr on b.shift_role_id = sr.id join
+      shifts s on sr.shift_id = s.id
+    group by b.user_id`;
+  
+  const result = await client.query(wrap`
+    select 
+      u.id,
+      concat_ws(' ', u.first_name, u.last_name) as name,
+      u.image_id,
+      ${select}
+      json_agg(distinct ua.role_id) as role_ids,
+      json_agg(distinct a.abbreviation) as area_names,
+      coalesce(s.booked, 0) as booked,
+      coalesce(s.attended, 0) as attended,
+      to_char(coalesce(s.attended_time, interval '0 hours'), 'HH24:MI') as attended_time
+    from 
+      user_areas ua join
+      users u on ua.user_id = u.id join
+      areas a on ua.area_id = a.id join
+      roles r on ua.role_id = r.id left join
+      (${shiftsQuery}) as s on s.user_id = u.id
+    where
+      u.organisation_id = ${organisationId}
+      ${where}
+    group by u.id, s.booked, s.attended, s.attended_time
+    ${having}
+    order by u.id desc
+    limit ${limit}`);
   return result.rows[0].result;
 }
 

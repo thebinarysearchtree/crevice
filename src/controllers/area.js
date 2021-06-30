@@ -19,23 +19,23 @@ const update = async (req, res) => {
 const getById = async (req, res) => {
   const { areaId } = req.body;
   const area = await db.areas.getById(areaId, req.user.organisationId);
-  return res.json(area);
+  return res.send(area);
 }
 
 const getWithLocation = async (req, res) => {
   const locations = await db.areas.getWithLocation(req.user.organisationId);
-  return res.json(locations);
+  return res.send(locations);
 }
 
 const getSelectListItems = async (req, res) => {
   const user = req.user;
   const selectListItems = await db.areas.getSelectListItems(user.isAdmin, user.id, user.organisationId);
-  return res.json(selectListItems);
+  return res.send(selectListItems);
 }
 
 const find = async (req, res) => {
   const areas = await db.areas.find(req.user.organisationId);
-  return res.json(areas);
+  return res.send(areas);
 }
 
 const remove = async (req, res) => {
