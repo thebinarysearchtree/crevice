@@ -244,7 +244,7 @@ create table shifts (
     organisation_id integer not null references organisations on delete cascade
 );
 
-create index shifts_index on shifts(area_id, start_time, end_time);
+create index shifts_index on shifts(area_id, start_time);
 
 create table tasks (
     id serial primary key,
@@ -304,8 +304,6 @@ create table shift_roles (
     cancel_before_minutes integer not null,
     book_before_minutes integer not null,
     can_book_and_cancel boolean not null,
-    can_assign boolean not null,
-    can_be_assigned boolean not null,
     organisation_id integer not null references organisations on delete cascade
 );
 
@@ -315,11 +313,8 @@ create table bookings (
     id serial primary key,
     shift_role_id integer not null references shift_roles on delete cascade,
     user_id integer not null references users on delete cascade,
-    assigned_to integer references bookings on delete set null,
     booked_at timestamptz not null default now(),
     booked_by integer not null references users on delete cascade,
-    cancellation_requested_at timestamptz,
-    cancellation_request_reason text,
     organisation_id integer not null references organisations on delete cascade
 );
 

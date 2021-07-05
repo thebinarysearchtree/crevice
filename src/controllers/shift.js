@@ -56,7 +56,14 @@ const find = async (req, res) => {
   return res.send(shifts);
 }
 
+const getAvailableShifts = async (req, res) => {
+  const query = req.body;
+  const shifts = await db.shifts.getAvailableShifts(query, req.user.organisationId);
+  return res.send(shifts);
+}
+
 module.exports = {
   insert,
-  find
+  find,
+  getAvailableShifts
 };

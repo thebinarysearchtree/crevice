@@ -41,9 +41,6 @@ const insert = async ({
           id = ${roleId} and
           organisation_id = ${organisationId})
     returning id`);
-  if (result.rowCount !== 1) {
-    throw new Error();
-  }
   return result.rows[0].id;
 }
 
