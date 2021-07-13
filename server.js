@@ -16,6 +16,7 @@ const files = require('./src/routes/file');
 const fields = require('./src/routes/field');
 const userAreas = require('./src/routes/userArea');
 const shifts = require('./src/routes/shift');
+const bookings = require('./src/routes/booking');
 
 app.use('/users', users);
 app.use('/roles', roles);
@@ -25,6 +26,7 @@ app.use('/files', files);
 app.use('/fields', fields);
 app.use('/userAreas', userAreas);
 app.use('/shifts', shifts);
+app.use('/bookings', bookings);
 
 const server = app.listen(config.port);
 

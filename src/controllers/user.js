@@ -14,6 +14,7 @@ const mailer = require('../services/emailTemplate');
 const populate = require('../database/populate');
 const parseCSV = require('csv-parse');
 const fs = require('fs').promises;
+const path = require('path');
 
 const db = {
   users: userRepository,

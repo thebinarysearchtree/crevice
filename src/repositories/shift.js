@@ -116,7 +116,7 @@ const getAvailableShifts = async ({
       sr.*,
       coalesce(bool_or(b.user_id = ${userId}), false) as booked,
       coalesce(json_agg(json_build_object(
-        'user_id', b.user_id,
+        'id', b.user_id,
         'name', concat_ws(' ', u.first_name, u.last_name),
         'image_id', u.image_id) order by u.last_name asc) filter (where b.id is not null), json_build_array()) as booked_users
     from

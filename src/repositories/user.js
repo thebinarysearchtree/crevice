@@ -214,11 +214,12 @@ const find = async ({
   areaId,
   activeDate,
   activeState,
-  lastUserId
+  page
 }, isAdmin, areaIds, organisationId, client = pool) => {
   const select = [];
   const where = [];
   const limit = 10;
+  const offset = limit * page;
   let having = sql``;
 
   if (!isAdmin) {
@@ -250,11 +251,8 @@ const find = async ({
       having = sql`having count(*) filter (where ua.start_time < now() and ua.end_time < now()) > 0`;
     }
   }
-  if (lastUserId === -1) {
+  if (page === 0) {
     select.push(sql`count(*) over() as total_count,`);
-  }
-  else {
-    where.push(sql`and u.id < ${lastUserId}`);
   }
 
   const shiftsQuery = sql`
@@ -291,8 +289,8 @@ const find = async ({
       ${where}
     group by u.id, s.booked, s.attended, s.attended_time
     ${having}
-    order by u.id desc
-    limit ${limit}`);
+    order by u.last_name asc
+    limit ${limit} offset ${offset}`);
   return result.rows[0].result;
 }
 

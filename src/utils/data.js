@@ -36,8 +36,8 @@ class Query {
 const sqlTag = (strings, params, wrapper) => {
   let index = 1;
   const paramsLength = params.length;
-  if (strings.length === 1 && strings[0] === '' && paramsLength === 1) {
-    return new Query(`${strings[0]}${params[0]}`, []);
+  if (strings.every(s => s === '') && paramsLength === 1) {
+    return new Query(`${params[0]}`, []);
   }
   const query = strings.reduce((a, c, i) => {
     if (paramsLength < (i + 1)) {

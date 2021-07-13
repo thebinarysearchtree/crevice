@@ -20,6 +20,7 @@ const insert = async (req, res) => {
     const results = await Promise.all(promises);
     await client.query('commit');
     const bookedCount = results.filter(r => r.rowCount === 1).length;
+    return res.json({ bookedCount });
   }
   catch (e) {
     await client.query('rollback');
@@ -29,3 +30,7 @@ const insert = async (req, res) => {
     client.release();
   }
 }
+
+module.exports = {
+  insert
+};
