@@ -1,7 +1,7 @@
-const getPool = require('../database/db');
-const shiftRepository = require('../repositories/shift');
-const shiftRoleRepository = require('../repositories/shiftRole');
-const { v4: uuid } = require('uuid');
+import getPool from '../database/db.js';
+import shiftRepository from '../repositories/shift.js';
+import shiftRoleRepository from '../repositories/shiftRole.js';
+import { v4 as uuid } from 'uuid';
 
 const db = {
   shifts: shiftRepository,
@@ -62,7 +62,7 @@ const getAvailableShifts = async (req, res) => {
   return res.send(shifts);
 }
 
-module.exports = {
+export {
   insert,
   find,
   getAvailableShifts

@@ -13,7 +13,7 @@ const owner = (req, res, next) => {
   return next();
 }
 
-module.exports = {
+export {
   admin,
   owner
 };

@@ -1,13 +1,14 @@
-const pg = require('pg');
+import pg from 'pg';
+import config from '../../config.js';
+
 const { Pool } = pg;
-const { database: config } = require('../../config');
 
 let pool = null;
 
 const getPool = () => {
   if (!pool) {
     try {
-      pool = new Pool(config);
+      pool = new Pool(config.database);
     }
     catch (e) {
       console.error(e);
@@ -16,4 +17,4 @@ const getPool = () => {
   return pool;
 }
 
-module.exports = getPool;
+export default getPool;

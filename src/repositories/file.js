@@ -1,5 +1,5 @@
-const getPool = require('../database/db');
-const { sql, wrap, makeReviver } = require('../utils/data');
+import getPool from '../database/db.js';
+import { sql, wrap, makeReviver } from '../utils/data.js';
 
 const reviver = makeReviver();
 
@@ -41,7 +41,7 @@ const getById = async (fileId, organisationId, client = pool) => {
   return JSON.parse(result.rows[0].result, reviver)[0];
 }
 
-module.exports = {
+export default {
   insert,
   getById
 };

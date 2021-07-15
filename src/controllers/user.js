@@ -1,20 +1,20 @@
-const getPool = require('../database/db');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-const { v4: uuid } = require('uuid');
-const config = require('../../config');
-const userRepository = require('../repositories/user');
-const organisationRepository = require('../repositories/organisation');
-const emailTemplateRepository = require('../repositories/emailTemplate');
-const userAreaRepository = require('../repositories/userArea');
-const userFieldRepository = require('../repositories/userField');
-const fileRepository = require('../repositories/file');
-const fieldRepository = require('../repositories/field');
-const mailer = require('../services/emailTemplate');
-const populate = require('../database/populate');
-const parseCSV = require('csv-parse');
-const fs = require('fs').promises;
-const path = require('path');
+import getPool from '../database/db.js';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import { v4 as uuid } from 'uuid';
+import config from '../../config.js';
+import userRepository from '../repositories/user.js';
+import organisationRepository from '../repositories/organisation.js';
+import emailTemplateRepository from '../repositories/emailTemplate.js';
+import userAreaRepository from '../repositories/userArea.js';
+import userFieldRepository from '../repositories/userField.js';
+import fileRepository from '../repositories/file.js';
+import fieldRepository from '../repositories/field.js';
+import mailer from '../services/emailTemplate.js';
+import populate from '../database/populate.js';
+import parseCSV from 'csv-parse';
+import { readFile } from 'fs/promises';
+import path from 'path';
 
 const db = {
   users: userRepository,
@@ -129,7 +129,7 @@ const parse = (content) => {
 
 const transformCsv = async (fileInfo, userAreas, organisationId) => {
   const file = await db.files.getById(fileInfo.fileId, organisationId);
-  const content = await fs.readFile(`${config.upload.filesDir}/${file.filename}`);
+  const content = await readFile(`${config.upload.filesDir}/${file.filename}`);
   let records;
   try {
     records = parse(content);
@@ -561,7 +561,7 @@ const remove = async (req, res) => {
   return res.sendStatus(200);
 }
 
-module.exports = {
+export {
   signUp,
   verify,
   inviteUsers,

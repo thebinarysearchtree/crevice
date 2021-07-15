@@ -1,13 +1,17 @@
-const express = require('express');
-const router = express.Router();
-const auth = require('../middleware/authentication');
-const { admin, owner } = require('../middleware/permission');
-const shiftController = require('../controllers/shift');
+import { Router } from 'express';
+import auth from '../middleware/authentication.js';
+import { admin, owner } from '../middleware/permission.js';
+import { 
+  insert, 
+  find, 
+  getAvailableShifts } from '../controllers/shift.js';
 
-let wrap = fn => (...args) => fn(...args).catch(args[2]);
+const wrap = fn => (...args) => fn(...args).catch(args[2]);
 
-router.post('/insert', [auth, admin], wrap(shiftController.insert));
-router.post('/find', [auth, admin], wrap(shiftController.find));
-router.post('/getAvailableShifts', [auth, owner], wrap(shiftController.getAvailableShifts));
+const router = Router();
 
-module.exports = router;
+router.post('/insert', [auth, admin], wrap(insert));
+router.post('/find', [auth, admin], wrap(find));
+router.post('/getAvailableShifts', [auth, owner], wrap(getAvailableShifts));
+
+export default router;

@@ -1,4 +1,4 @@
-module.exports = {
+export default {
   key: 'crevice',
   port: 8080,
   host: 'localhost',

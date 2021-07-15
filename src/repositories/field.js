@@ -1,5 +1,5 @@
-const getPool = require('../database/db');
-const { sql, wrap, makeReviver } = require('../utils/data');
+import getPool from '../database/db.js';
+import { sql, wrap, makeReviver } from '../utils/data.js';
 
 const reviver = makeReviver();
 
@@ -168,7 +168,7 @@ const remove = async (fieldId, organisationId, client = pool) => {
       field_number > (select field_number from delete_result)`);
 }
 
-module.exports = {
+export default {
   insert,
   update,
   moveUp,

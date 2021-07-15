@@ -1,4 +1,4 @@
-const locationRepository = require('../repositories/location');
+import locationRepository from '../repositories/location.js';
 
 const db = {
   locations: locationRepository
@@ -38,7 +38,7 @@ const remove = async (req, res) => {
   return res.sendStatus(200);
 }
 
-module.exports = {
+export {
   insert,
   update,
   getById,

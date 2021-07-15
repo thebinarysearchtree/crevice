@@ -1,29 +1,44 @@
-const express = require('express');
-const router = express.Router();
-const auth = require('../middleware/authentication');
-const { admin } = require('../middleware/permission');
-const { photos } = require('../middleware/upload');
-const userController = require('../controllers/user');
+import { Router } from 'express';
+import auth from '../middleware/authentication.js';
+import { admin } from '../middleware/permission.js';
+import { photos } from '../middleware/upload.js';
+import { 
+  signUp, 
+  verify, 
+  lostPassword, 
+  changePasswordWithToken, 
+  getToken, 
+  refreshToken, 
+  inviteUsers, 
+  resendInvitation, 
+  checkEmailExists, 
+  changePassword, 
+  find, 
+  getUserDetails, 
+  remove, 
+  changeImage, 
+  updateImages } from '../controllers/user.js';
 
-let wrap = fn => (...args) => fn(...args).catch(args[2]);
+const wrap = fn => (...args) => fn(...args).catch(args[2]);
 
-router.post('/signUp', wrap(userController.signUp));
-router.post('/verify', wrap(userController.verify));
-router.post('/lostPassword', wrap(userController.lostPassword));
-router.post('/changePasswordWithToken', wrap(userController.changePasswordWithToken));
-router.post('/getToken', wrap(userController.getToken));
-router.post('/refreshToken', wrap(userController.refreshToken));
+const router = Router();
 
-router.post('/inviteUsers', [auth, admin], wrap(userController.inviteUsers));
-router.post('/resendInvitation', [auth, admin], wrap(userController.resendInvitation));
-router.post('/checkeEmailExists', auth, wrap(userController.checkEmailExists));
-router.post('/changePassword', auth, wrap(userController.changePassword));
-router.post('/find', auth, wrap(userController.find));
-router.post('/getUserDetails', [auth, admin], wrap(userController.getUserDetails));
-router.post('/update', auth, wrap(userController.update));
-router.post('/remove', [auth, admin], wrap(userController.remove));
+router.post('/signUp', wrap(signUp));
+router.post('/verify', wrap(verify));
+router.post('/lostPassword', wrap(lostPassword));
+router.post('/changePasswordWithToken', wrap(changePasswordWithToken));
+router.post('/getToken', wrap(getToken));
+router.post('/refreshToken', wrap(refreshToken));
 
-router.post('/changeImage', [auth, admin], wrap(userController.changeImage));
-router.post('/updateImages', [auth, admin], wrap(userController.updateImages));
+router.post('/inviteUsers', [auth, admin], wrap(inviteUsers));
+router.post('/resendInvitation', [auth, admin], wrap(resendInvitation));
+router.post('/checkeEmailExists', auth, wrap(checkEmailExists));
+router.post('/changePassword', auth, wrap(changePassword));
+router.post('/find', auth, wrap(find));
+router.post('/getUserDetails', [auth, admin], wrap(getUserDetails));
+router.post('/remove', [auth, admin], wrap(remove));
 
-module.exports = router;
+router.post('/changeImage', [auth, admin], wrap(changeImage));
+router.post('/updateImages', [auth, admin], wrap(updateImages));
+
+export default router;

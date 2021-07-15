@@ -1,5 +1,5 @@
-const mailer = require('./email');
-const emailTemplateRepository = require('../repositories/emailTemplate');
+import mailer from './email.js';
+import emailTemplateRepository from '../repositories/emailTemplate.js';
 
 const db = {
   emailTemplates: emailTemplateRepository
@@ -43,6 +43,6 @@ const send = async (type, users, templateId, organisationId) => {
   return results.flatMap(r => r.rejected);
 }
 
-module.exports = {
+export default {
   send
 };

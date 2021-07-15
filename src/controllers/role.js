@@ -1,4 +1,4 @@
-const roleRepository = require('../repositories/role');
+import roleRepository from '../repositories/role.js';
 
 const db = {
   roles: roleRepository
@@ -38,7 +38,7 @@ const remove = async (req, res) => {
   return res.sendStatus(200);
 }
 
-module.exports = {
+export {
   insert,
   update,
   getById,

@@ -1,5 +1,5 @@
-const getPool = require('../database/db');
-const userAreaRepository = require('../repositories/userArea');
+import getPool from '../database/db.js';
+import userAreaRepository from '../repositories/userArea.js';
 
 const db = {
   userAreas: userAreaRepository
@@ -53,7 +53,7 @@ const remove = async (req, res) => {
   return res.sendStatus(200);
 }
 
-module.exports = {
+export {
   insert,
   insertMany,
   update,

@@ -1,9 +1,11 @@
-const fs = require('fs').promises;
-const { upload: config } = require('../../config');
-const path = require('path');
-const { v4: uuid } = require('uuid');
-const sharp = require('sharp');
-const { parse } = require('./file');
+import { rename, unlink } from 'fs/promises';
+import config from '../../config.js';
+import { extname } from 'path';
+import { v4 as uuid } from 'uuid';
+import sharp from 'sharp';
+import { parse } from './file.js';
+
+const { upload } = config;
 
 const getFiles = async (req) => {
   let { files } = await parse(req);
@@ -21,9 +23,9 @@ const files = async (req, res, next) => {
   const storedFiles = [];
   for (const file of files) {
     const fileId = uuid();
-    const extension = path.extname(file.name);
-    const filePath = `${config.filesDir}/${fileId}${extension}`;
-    await fs.rename(file.path, filePath);
+    const extension = extname(file.name);
+    const filePath = `${upload.filesDir}/${fileId}${extension}`;
+    await rename(file.path, filePath);
     storedFiles.push({
       fileId,
       filename: `${fileId}${extension}`,
@@ -54,7 +56,7 @@ const photos = async (req, res, next) => {
     }
     const { width, height, format } = photo.metadata();
     const fileId = uuid();
-    const filePath = `${config.photosDir}/${fileId}.jpg`;
+    const filePath = `${upload.photosDir}/${fileId}.jpg`;
     if (width < photoSize || height < photoSize) {
       storedFiles.push({
         originalName: file.name,
@@ -76,7 +78,7 @@ const photos = async (req, res, next) => {
       photo.toFormat('jpeg');
     }
     const result = await photo.toFile(filePath);
-    await fs.unlink(file.path);
+    await unlink(file.path);
     storedFiles.push({
       fileId,
       filename: `${fileId}.jpg`,
@@ -89,7 +91,7 @@ const photos = async (req, res, next) => {
   return next();
 }
 
-module.exports = {
+export {
   files,
   photos
 };

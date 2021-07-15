@@ -1,5 +1,5 @@
-const getPool = require('../database/db');
-const bookingRepository = require('../repositories/booking');
+import getPool from '../database/db.js';
+import bookingRepository from '../repositories/booking.js';
 
 const db = {
   bookings: bookingRepository
@@ -31,6 +31,6 @@ const insert = async (req, res) => {
   }
 }
 
-module.exports = {
+export {
   insert
 };

@@ -1,5 +1,5 @@
-const getPool = require('../database/db');
-const { sql } = require('../utils/data');
+import getPool from '../database/db.js';
+import { sql } from '../utils/data.js';
 
 const pool = getPool();
 
@@ -44,7 +44,7 @@ const remove = async (itemId, organisationId, client = pool) => {
   return result;
 }
 
-module.exports = {
+export default {
   insert,
   update,
   remove

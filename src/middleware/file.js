@@ -1,7 +1,7 @@
-const fs = require('fs');
-const path = require('path');
-const yauzl = require('yauzl');
-const formidable = require('formidable');
+import { createWriteStream, unlink } from 'fs';
+import { dirname } from 'path';
+import { open } from 'yauzl';
+import formidable from 'formidable';
 
 const form = formidable({ multiples: true });
 
@@ -18,7 +18,7 @@ const parse = (req) => {
 
 const unzip = (filePath) => {
   return new Promise((resolve, reject) => {
-    yauzl.open(filePath, { lazyEntries: true }, (err, zipFile) => {
+    open(filePath, { lazyEntries: true }, (err, zipFile) => {
       if (err) {
         return reject(err);
       }
@@ -33,8 +33,8 @@ const unzip = (filePath) => {
             return reject(err);
           }
           readStream.on('end', () => zipFile.readEntry());
-          const entryPath = `${path.dirname(filePath)}/${entry.fileName}`;
-          const file = fs.createWriteStream(entryPath);
+          const entryPath = `${dirname(filePath)}/${entry.fileName}`;
+          const file = createWriteStream(entryPath);
           readStream.pipe(file);
           files.push({
             name: entry.fileName,
@@ -43,7 +43,7 @@ const unzip = (filePath) => {
         });
       });
       zipFile.on('close', () => {
-        fs.unlink(filePath, (err) => {
+        unlink(filePath, (err) => {
           if (err) {
             return reject(err);
           }
@@ -54,7 +54,7 @@ const unzip = (filePath) => {
   })
 }
 
-module.exports = {
+export {
   parse,
   unzip
 };

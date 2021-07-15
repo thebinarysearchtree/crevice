@@ -1,22 +1,21 @@
-const config = require('./config');
-const express = require('express');
-const logger = require('morgan');
+import config from './config.js';
+import express from 'express';
+import logger from 'morgan';
+import users from './src/routes/user.js';
+import roles from './src/routes/role.js';
+import locations from './src/routes/location.js';
+import areas from './src/routes/area.js';
+import files from './src/routes/file.js';
+import fields from './src/routes/field.js';
+import userAreas from './src/routes/userArea.js';
+import shifts from './src/routes/shift.js';
+import bookings from './src/routes/booking.js';
 
 const app = express();
 
 app.use(logger('dev'));
 app.use(express.json());
 app.use('/photos', express.static('photos'));
-
-const users = require('./src/routes/user');
-const roles = require('./src/routes/role');
-const locations = require('./src/routes/location');
-const areas = require('./src/routes/area');
-const files = require('./src/routes/file');
-const fields = require('./src/routes/field');
-const userAreas = require('./src/routes/userArea');
-const shifts = require('./src/routes/shift');
-const bookings = require('./src/routes/booking');
 
 app.use('/users', users);
 app.use('/roles', roles);
@@ -30,4 +29,4 @@ app.use('/bookings', bookings);
 
 const server = app.listen(config.port);
 
-module.exports = server;
+export default server;

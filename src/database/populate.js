@@ -1,4 +1,4 @@
-const emailTemplateRepository = require('../repositories/emailTemplate');
+import emailTemplateRepository from '../repositories/emailTemplate.js';
 
 const db = {
   emailTemplates: emailTemplateRepository
@@ -50,4 +50,4 @@ const populate = async (organisationId, client) => {
   }
 }
 
-module.exports = populate;
+export default populate;

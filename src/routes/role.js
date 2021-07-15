@@ -1,16 +1,23 @@
-const express = require('express');
-const router = express.Router();
-const auth = require('../middleware/authentication');
-const { admin } = require('../middleware/permission');
-const roleController = require('../controllers/role');
+import { Router } from 'express';
+import auth from '../middleware/authentication.js';
+import { admin } from '../middleware/permission.js';
+import { 
+  insert, 
+  update, 
+  getById, 
+  getSelectListItems, 
+  find, 
+  remove } from '../controllers/role.js';
 
-let wrap = fn => (...args) => fn(...args).catch(args[2]);
+const wrap = fn => (...args) => fn(...args).catch(args[2]);
 
-router.post('/insert', [auth, admin], wrap(roleController.insert));
-router.post('/update', [auth, admin], wrap(roleController.update));
-router.post('/getById', [auth, admin], wrap(roleController.getById));
-router.post('/getSelectListItems', [auth, admin], wrap(roleController.getSelectListItems));
-router.post('/find', [auth, admin], wrap(roleController.find));
-router.post('/remove', [auth, admin], wrap(roleController.remove));
+const router = Router();
 
-module.exports = router;
+router.post('/insert', [auth, admin], wrap(insert));
+router.post('/update', [auth, admin], wrap(update));
+router.post('/getById', [auth, admin], wrap(getById));
+router.post('/getSelectListItems', [auth, admin], wrap(getSelectListItems));
+router.post('/find', [auth, admin], wrap(find));
+router.post('/remove', [auth, admin], wrap(remove));
+
+export default router;

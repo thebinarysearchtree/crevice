@@ -1,5 +1,7 @@
-const mailer = require('nodemailer');
-const { email, environment } = require('../../config');
+import { createTransport } from 'nodemailer';
+import config from '../../config.js';
+
+const { email, environment } = config;
 
 let transport;
 if (environment === 'test') {
@@ -11,7 +13,7 @@ if (environment === 'test') {
   }
 }
 else {
-  transport = mailer.createTransport({
+  transport = createTransport({
     host: email.host,
     port: email.port,
     secure: false,
@@ -44,4 +46,4 @@ const send = async ({
   }
 }
 
-module.exports = { send };
+export default { send };

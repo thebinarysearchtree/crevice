@@ -1,5 +1,5 @@
-const getPool = require('../database/db');
-const { sql, wrap } = require('../utils/data');
+import getPool from '../database/db.js';
+import { sql, wrap } from '../utils/data.js';
 
 const pool = getPool();
 
@@ -151,7 +151,7 @@ const getAvailableShifts = async ({
   return result.rows[0].result;
 }
 
-module.exports = {
+export default {
   insert,
   find,
   getAvailableShifts

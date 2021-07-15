@@ -1,6 +1,6 @@
-const getPool = require('../database/db');
-const fieldRepository = require('../repositories/field');
-const fieldItemRepository = require('../repositories/fieldItem');
+import getPool from '../database/db.js';
+import fieldRepository from '../repositories/field.js';
+import fieldItemRepository from '../repositories/fieldItem.js';
 
 const db = {
   fields: fieldRepository,
@@ -133,7 +133,7 @@ const remove = async (req, res) => {
   return res.sendStatus(200);
 }
 
-module.exports = {
+export {
   insert,
   update,
   moveUp,

@@ -1,5 +1,5 @@
-const getPool = require('../database/db');
-const { sql, wrap } = require('../utils/data');
+import getPool from '../database/db.js';
+import { sql, wrap } from '../utils/data.js';
 
 const pool = getPool();
 
@@ -75,7 +75,7 @@ const remove = async (roleId, organisationId, client = pool) => {
       organisation_id = ${organisationId}`);
 }
 
-module.exports = {
+export default {
   insert,
   update,
   getById,

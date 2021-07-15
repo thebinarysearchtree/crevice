@@ -85,7 +85,7 @@ const sqlTag = (strings, params, wrapper) => {
 const sql = (strings, ...params) => sqlTag(strings, params);
 const wrap = (strings, ...params) => sqlTag(strings, params, wrapper);
 
-module.exports = {
+export {
   sql,
   wrap,
   makeReviver

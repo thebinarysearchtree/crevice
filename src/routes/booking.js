@@ -1,11 +1,12 @@
-const express = require('express');
-const router = express.Router();
-const auth = require('../middleware/authentication');
-const { owner } = require('../middleware/permission');
-const bookingController = require('../controllers/booking');
+import { Router } from 'express';
+import auth from '../middleware/authentication.js';
+import { owner } from '../middleware/permission.js';
+import { insert } from '../controllers/booking.js';
 
-let wrap = fn => (...args) => fn(...args).catch(args[2]);
+const wrap = fn => (...args) => fn(...args).catch(args[2]);
 
-router.post('/insert', [auth, owner], wrap(bookingController.insert));
+const router = Router();
 
-module.exports = router;
+router.post('/insert', [auth, owner], wrap(insert));
+
+export default router;

@@ -1,4 +1,4 @@
-const areaRepository = require('../repositories/area');
+import areaRepository from '../repositories/area.js';
 
 const db = {
   areas: areaRepository
@@ -44,7 +44,7 @@ const remove = async (req, res) => {
   return res.sendStatus(200);
 }
 
-module.exports = {
+export {
   insert,
   update,
   getById,

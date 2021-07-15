@@ -1,4 +1,4 @@
-const fileRepository = require('../repositories/file');
+import fileRepository from '../repositories/file.js';
 
 const db = {
   files: fileRepository
@@ -18,7 +18,7 @@ const uploadPhotos = async (req, res) => {
   return res.json(req.files);
 }
 
-module.exports = { 
+export { 
   uploadFiles,
   uploadPhotos
 };

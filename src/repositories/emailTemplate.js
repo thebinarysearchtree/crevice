@@ -1,4 +1,4 @@
-const getPool = require('../database/db');
+import getPool from '../database/db.js';
 
 const pool = getPool();
 
@@ -89,7 +89,7 @@ const deleteById = async (templateId, organisationId, client = pool) => {
       organisation_id = $2`, [templateId, organisationId]);
 }
 
-module.exports = {
+export default {
   insert,
   getById,
   getDefaultTemplate,

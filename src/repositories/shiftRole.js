@@ -1,5 +1,5 @@
-const getPool = require('../database/db');
-const { sql } = require('../utils/data');
+import getPool from '../database/db.js';
+import { sql } from '../utils/data.js';
 
 const pool = getPool();
 
@@ -46,6 +46,6 @@ const insert = async ({
   return result.rows[0].id;
 }
 
-module.exports = {
+export default {
   insert
 };

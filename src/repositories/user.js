@@ -1,5 +1,5 @@
-const getPool = require('../database/db');
-const { sql, wrap, makeReviver } = require('../utils/data');
+import getPool from '../database/db.js';
+import { sql, wrap, makeReviver } from '../utils/data.js';
 
 const reviver = makeReviver();
 
@@ -398,7 +398,7 @@ const remove = async (userId, organisationId, client = pool) => {
       is_admin is false`);
 }
 
-module.exports = {
+export default {
   insert,
   checkEmailExists,
   getById,
