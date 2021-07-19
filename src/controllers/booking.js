@@ -31,6 +31,13 @@ const insert = async (req, res) => {
   }
 }
 
+const remove = async (req, res) => {
+  const { userId, bookingId } = req.body;
+  const cancelledCount = await db.bookings.remove({ userId, bookingId }, req.user.isAdmin, req.user.organisationId);
+  return res.json({ cancelledCount });
+}
+
 export {
-  insert
+  insert,
+  remove
 };

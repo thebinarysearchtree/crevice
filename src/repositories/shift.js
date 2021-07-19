@@ -114,17 +114,22 @@ const getAvailableShifts = async ({
   const shiftRolesQuery = sql`
     select
       sr.*,
+      r.name,
+      sr.can_book_and_cancel and (s.start_time - interval '1 minute' * sr.book_before_minutes > now()) as can_book,
+      sr.can_book_and_cancel and (s.start_time - interval '1 minute' * sr.cancel_before_minutes > now()) as can_cancel,
       coalesce(bool_or(b.user_id = ${userId}), false) as booked,
       coalesce(json_agg(json_build_object(
         'id', b.user_id,
+        'booking_id', b.id,
         'name', concat_ws(' ', u.first_name, u.last_name),
         'image_id', u.image_id) order by u.last_name asc) filter (where b.id is not null), json_build_array()) as booked_users
     from
       shifts s join
-      shift_roles sr on sr.shift_id = s.id left join
+      shift_roles sr on sr.shift_id = s.id join
+      roles r on sr.role_id = r.id left join
       bookings b on b.shift_role_id = sr.id left join
       users u on b.user_id = u.id
-    group by sr.id`;
+    group by sr.id, s.start_time, r.name`;
 
   const result = await client.query(wrap`
     select

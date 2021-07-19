@@ -58,6 +58,34 @@ const insert = async ({
   return result;
 }
 
+const remove = async ({
+  userId,
+  bookingId
+}, isAdmin, organisationId, client = pool) => {
+  const checkCancelQuery = isAdmin ? sql`` : sql`
+    and exists(
+      select 1
+      from
+        bookings b join
+        shift_roles sr on b.shift_role_id = sr.id join
+        shifts s on sr.shift_id = s.id
+      where
+        b.id = ${bookingId} and
+        sr.can_book_and_cancel and
+        s.start_time - interval '1 minute' * sr.cancel_before_minutes > now())`;
+
+  const result = await client.query(sql`
+    delete from bookings
+    where
+      id = ${bookingId} and
+      user_id = ${userId} and
+      organisation_id = ${organisationId}
+      ${checkCancelQuery}`);
+
+  return result.rowCount;
+}
+
 export default {
-  insert
+  insert,
+  remove
 };
