@@ -122,7 +122,7 @@ const getUserDetails = async (userId, organisationId, client = pool) => {
     select
       ua.user_id,
       json_agg(distinct r.name) as roles,
-      json_agg(distinct a.abbreviation) as areas
+      json_agg(distinct a.name) as areas
     from
       user_areas ua join
       roles r on ua.role_id = r.id join
@@ -274,7 +274,7 @@ const find = async ({
       u.image_id,
       ${select}
       json_agg(distinct ua.role_id) as role_ids,
-      json_agg(distinct a.abbreviation) as area_names,
+      json_agg(distinct a.name) as area_names,
       coalesce(s.booked, 0) as booked,
       coalesce(s.attended, 0) as attended,
       to_char(coalesce(s.attended_time, interval '0 hours'), 'HH24:MI') as attended_time

@@ -5,18 +5,16 @@ const pool = getPool();
 
 const insert = async ({
   name,
-  abbreviation,
   locationId,
   notes
 }, organisationId, client = pool) => {
   const result = await client.query(sql`
     insert into areas(
       name,
-      abbreviation,
       location_id,
       notes,
       organisation_id)
-    select ${[name, abbreviation, locationId, notes, organisationId]}
+    select ${[name, locationId, notes, organisationId]}
     where exists(
       select 1 from locations
       where
@@ -29,7 +27,6 @@ const insert = async ({
 const update = async ({
   id,
   name,
-  abbreviation,
   locationId,
   notes
 }, organisationId, client = pool) => {
@@ -37,7 +34,6 @@ const update = async ({
     update areas
     set
       name = ${name},
-      abbreviation = ${abbreviation},
       location_id = ${locationId},
       notes = ${notes}
     where
@@ -64,12 +60,10 @@ const getWithLocation = async (organisationId, client = pool) => {
     select
       l.id,
       l.name,
-      l.abbreviation,
       json_agg(json_build_object(
         'id', a.id,
         'name', a.name,
-        'abbreviation', a.abbreviation,
-        'time_zone', l.time_zone) order by a.abbreviation asc) as areas
+        'time_zone', l.time_zone) order by a.name asc) as areas
     from
       areas a join
       locations l on a.location_id = l.id
@@ -84,16 +78,16 @@ const getSelectListItems = async (isAdmin, userId, organisationId, client = pool
     const result = await client.query(wrap`
       select 
         id, 
-        abbreviation as name
+        name
       from areas 
       where organisation_id = ${organisationId}
-      order by abbreviation desc`);
+      order by name desc`);
     return result.rows[0].result;
   }
   const result = await client.query(wrap`
     select 
       a.id, 
-      a.abbreviation as name
+      a.name
     from
       user_areas ua join
       areas a on ua.area_id = a.id 
@@ -102,7 +96,7 @@ const getSelectListItems = async (isAdmin, userId, organisationId, client = pool
       ua.organisation_id = ${organisationId} and
       ua.is_admin is true and
       ua.start_time <= now() and (ua.end_time > now() or ua.end_time is null)
-    order by a.abbreviation desc`);
+    order by a.name desc`);
   return result.rows[0].result;
 }
 
@@ -110,7 +104,7 @@ const find = async (organisationId, client = pool) => {
   const result = await client.query(wrap`
     select
       a.*,
-      l.abbreviation as location_name,
+      l.name as location_name,
       coalesce(json_agg(json_build_object(
         'id', u.id,
         'name', concat_ws(' ', u.first_name, u.last_name),
@@ -127,8 +121,7 @@ const find = async (organisationId, client = pool) => {
     where a.organisation_id = ${organisationId}
     group by
       a.id,
-      l.name,
-      l.abbreviation
+      l.name
     order by
       l.name asc,
       a.name asc`);

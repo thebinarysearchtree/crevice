@@ -100,7 +100,6 @@ create index user_files_user_id_index on user_files(user_id);
 create table locations (
     id serial primary key,
     name text not null,
-    abbreviation text not null,
     time_zone text not null,
     address text,
     created_at timestamptz not null default now(),
@@ -112,7 +111,6 @@ create index locations_organisation_id_index on locations(organisation_id);
 create table areas (
     id serial primary key,
     name text not null,
-    abbreviation text not null,
     location_id integer not null references locations on delete cascade,
     notes text,
     address text,

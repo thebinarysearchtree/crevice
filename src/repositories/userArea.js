@@ -88,7 +88,6 @@ const find = async (userId, organisationId, client = pool) => {
   const result = await client.query(wrap`
     select 
       a.id,
-      a.abbreviation, 
       a.name,
       l.time_zone,
       json_agg(json_build_object(
@@ -108,7 +107,7 @@ const find = async (userId, organisationId, client = pool) => {
       ua.user_id = ${userId} and
       ua.organisation_id = ${organisationId}
     group by a.id, l.time_zone
-    order by abbreviation asc`);
+    order by name asc`);
   return result.rows[0].result;
 }
 

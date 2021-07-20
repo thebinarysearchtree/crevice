@@ -135,7 +135,7 @@ const getAvailableShifts = async ({
     select
       s.id,
       s.area_id,
-      a.abbreviation as area_name,
+      a.name as area_name,
       s.start_time at time zone l.time_zone as start_time,
       s.end_time at time zone l.time_zone as end_time,
       s.break_minutes,
@@ -151,7 +151,7 @@ const getAvailableShifts = async ({
       areas a on s.area_id = a.id join
       locations l on a.location_id = l.id join
       ((${availableQuery}) union (${bookedQuery})) as b on s.id = b.shift_id
-    group by s.id, a.abbreviation, l.time_zone, b.id
+    group by s.id, a.name, l.time_zone, b.id
     order by s.start_time asc`);
   return result.rows[0].result;
 }

@@ -5,20 +5,17 @@ const pool = getPool();
 
 const insert = async ({
   name,
-  abbreviation,
   timeZone,
   address
 }, organisationId, client = pool) => {
   const result = await client.query(sql`
     insert into locations(
       name,
-      abbreviation,
       time_zone,
       address,
       organisation_id)
     values(${[
       name,
-      abbreviation,
       timeZone,
       address,
       organisationId]})
@@ -29,7 +26,6 @@ const insert = async ({
 const update = async ({
   id,
   name,
-  abbreviation,
   timeZone,
   address
 }, organisationId, client = pool) => {
@@ -37,7 +33,6 @@ const update = async ({
     update locations
     set
       name = ${name},
-      abbreviation = ${abbreviation},
       time_zone = ${timeZone},
       address = ${address}
     where
@@ -58,10 +53,10 @@ const getSelectListItems = async (organisationId, client = pool) => {
   const result = await client.query(wrap`
     select 
       id,
-      abbreviation as name
+      name
     from locations 
     where organisation_id = ${organisationId}
-    order by abbreviation asc`);
+    order by name asc`);
   return result.rows[0].result;
 }
 
