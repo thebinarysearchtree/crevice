@@ -40,14 +40,17 @@ const find = async ({
   const shiftRolesQuery = sql`
     select
       sr.*,
+      r.name as role_name,
+      r.colour as role_colour,
       count(*) filter (where b.id is not null) as booked_count,
       coalesce(json_agg(json_build_object(
-        'user_id', b.user_id,
+        'id', b.user_id,
         'name', concat_ws(' ', u.first_name, u.last_name),
         'image_id', u.image_id)) filter (where b.id is not null), json_build_array()) as booked_users
     from
       shifts s join
-      shift_roles sr on sr.shift_id = s.id left join
+      shift_roles sr on sr.shift_id = s.id join
+      roles r on sr.role_id = r.id left join
       bookings b on b.shift_role_id = sr.id left join
       users u on b.user_id = u.id
     where
@@ -55,7 +58,7 @@ const find = async ({
       s.start_time >= ${startTime} and
       s.start_time < ${endTime} and
       s.organisation_id = ${organisationId}
-    group by sr.id`;
+    group by sr.id, r.name, r.colour`;
 
   const result = await client.query(wrap`
     select
@@ -156,8 +159,34 @@ const getAvailableShifts = async ({
   return result.rows[0].result;
 }
 
+const remove = async (shiftId, organisationId, client = pool) => {
+  const result = await client.query(sql`
+    delete from shifts
+    where
+      id = ${shiftId} and
+      organisation_id = ${organisationId}`);
+  return result;
+}
+
+const removeSeries = async ({
+  seriesId,
+  startTime,
+  endTime
+}, organisationId, client = pool) => {
+  const result = await client.query(sql`
+    delete from shifts
+    where
+      series_id = ${seriesId} and
+      start_time >= ${startTime} and
+      start_time <= ${endTime} and
+      organisation_id = ${organisationId}`);
+  return result;
+}
+
 export default {
   insert,
   find,
-  getAvailableShifts
+  getAvailableShifts,
+  remove,
+  removeSeries
 };

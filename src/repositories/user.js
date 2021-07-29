@@ -273,7 +273,7 @@ const find = async ({
       concat_ws(' ', u.first_name, u.last_name) as name,
       u.image_id,
       ${select}
-      json_agg(distinct ua.role_id) as role_ids,
+      json_agg(json_build_object('name', r.name, 'colour', r.colour)) as roles,
       json_agg(distinct a.name) as area_names,
       coalesce(s.booked, 0) as booked,
       coalesce(s.attended, 0) as attended,
@@ -287,7 +287,7 @@ const find = async ({
     where
       u.organisation_id = ${organisationId}
       ${where}
-    group by u.id, s.booked, s.attended, s.attended_time
+    group by u.id, r.name, r.colour, s.booked, s.attended, s.attended_time
     ${having}
     order by u.last_name asc
     limit ${limit} offset ${offset}`);

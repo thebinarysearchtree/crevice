@@ -62,8 +62,25 @@ const getAvailableShifts = async (req, res) => {
   return res.send(shifts);
 }
 
+const remove = async (req, res) => {
+  const { shiftId } = req.body;
+  const result = await db.shifts.remove(shiftId, req.user.organisationId);
+  if (result.rowCount === 1) {
+    return res.sendStatus(200);
+  }
+  return res.sendStatus(500);
+}
+
+const removeSeries = async (req, res) => {
+  const query = req.body;
+  const result = await db.shifts.removeSeries(query, req.user.organisationId);
+  return res.json({ deletedCount: result.rowCount });
+}
+
 export {
   insert,
   find,
-  getAvailableShifts
+  getAvailableShifts,
+  remove,
+  removeSeries
 };
