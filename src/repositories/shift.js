@@ -45,6 +45,7 @@ const find = async ({
       count(*) filter (where b.id is not null) as booked_count,
       coalesce(json_agg(json_build_object(
         'id', b.user_id,
+        'booking_id', b.id,
         'name', concat_ws(' ', u.first_name, u.last_name),
         'image_id', u.image_id)) filter (where b.id is not null), json_build_array()) as booked_users
     from
