@@ -12,8 +12,8 @@ const insert = async (req, res) => {
 
 const update = async (req, res) => {
   const area = req.body;
-  await db.areas.update(area, req.user.organisationId);
-  return res.sendStatus(200);
+  const result = await db.areas.update(area, req.user.organisationId);
+  return res.json({ updateCount: result.rowCount });
 }
 
 const getById = async (req, res) => {
@@ -40,8 +40,8 @@ const find = async (req, res) => {
 
 const remove = async (req, res) => {
   const { areaId } = req.body;
-  await db.areas.remove(areaId, req.user.organisationId);
-  return res.sendStatus(200);
+  const result = await db.areas.remove(areaId, req.user.organisationId);
+  return res.json({ deletedCount: result.rowCount });
 }
 
 export {

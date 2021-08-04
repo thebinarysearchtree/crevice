@@ -154,7 +154,7 @@ const find = async (organisationId, client = pool) => {
 }
 
 const remove = async (fieldId, organisationId, client = pool) => {
-  await client.query(sql`
+  const result = await client.query(sql`
     with delete_result as (
       delete from fields
       where
@@ -166,6 +166,7 @@ const remove = async (fieldId, organisationId, client = pool) => {
     where
       organisation_id = ${organisationId} and
       field_number > (select field_number from delete_result)`);
+  return result;
 }
 
 export default {

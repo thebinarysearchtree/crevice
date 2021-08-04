@@ -22,7 +22,7 @@ const update = async ({
   name,
   colour
  }, organisationId, client = pool) => {
-  await client.query(sql`
+  const result = await client.query(sql`
     update roles
     set 
       name = ${name},
@@ -30,6 +30,7 @@ const update = async ({
     where
       id = ${id} and
       organisation_id = ${organisationId}`);
+  return result;
 }
 
 const getById = async (roleId, organisationId, client = pool) => {
@@ -68,11 +69,12 @@ const find = async (organisationId, client = pool) => {
 }
 
 const remove = async (roleId, organisationId, client = pool) => {
-  await client.query(sql`
+  const result = await client.query(sql`
     delete from roles
     where
       id = ${roleId} and
       organisation_id = ${organisationId}`);
+  return result;
 }
 
 export default {

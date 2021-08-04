@@ -129,8 +129,8 @@ const find = async (req, res) => {
 
 const remove = async (req, res) => {
   const { fieldId } = req.body;
-  await db.fields.remove(fieldId, req.user.organisationId);
-  return res.sendStatus(200);
+  const result = await db.fields.remove(fieldId, req.user.organisationId);
+  return res.json({ deletedCount: result.rowCount });
 }
 
 export {

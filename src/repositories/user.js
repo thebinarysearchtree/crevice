@@ -294,6 +294,36 @@ const find = async ({
   return result.rows[0].result;
 }
 
+const findPotentialBookings = async ({
+  searchTerm,
+  areaId,
+  roleIds,
+  shiftStartTime
+}, organisationId, client = pool) => {
+  searchTerm = `${searchTerm}%`;
+  
+  const result = await client.query(wrap`
+    select
+      u.id,
+      concat_ws(' ', u.first_name, u.last_name) as name,
+      r.id as role_id,
+      r.name as role_name,
+      u.image_id
+    from
+      user_areas ua join
+      roles r on ua.role_id = r.id join
+      users u on ua.user_id = u.id
+    where
+      concat_ws(' ', u.first_name, u.last_name) ilike ${searchTerm} and
+      ua.role_id in (${roleIds}) and
+      ua.area_id = ${areaId} and
+      ua.start_time <= ${shiftStartTime} and
+      (ua.end_time is null or ua.end_time > ${shiftStartTime}) and
+      u.organisation_id = ${organisationId}
+    limit 5`);
+  return result.rows[0].result;
+}
+
 const updateImageByPrimaryField = async ({
   fileId,
   fieldName,
@@ -390,12 +420,13 @@ const getPassword = async (userId, client = pool) => {
 }
 
 const remove = async (userId, organisationId, client = pool) => {
-  await client.query(sql`
+  const result = await client.query(sql`
     delete from users
     where 
       id = ${userId} and
       organisation_id = ${organisationId} and
       is_admin is false`);
+  return result;
 }
 
 export default {
@@ -410,6 +441,7 @@ export default {
   changePassword,
   changePasswordWithToken,
   find,
+  findPotentialBookings,
   updateImageByPrimaryField,
   updateImageByCustomField,
   resetFailedPasswordAttempts,

@@ -79,9 +79,7 @@ const update = async ({
         where
           id = ${areaId} and
           organisation_id = ${organisationId})`);
-  if (result.rowCount !== 1) {
-    throw new Error();
-  }
+  return result;
 }
 
 const find = async (userId, organisationId, client = pool) => {

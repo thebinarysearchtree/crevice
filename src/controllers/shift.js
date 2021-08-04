@@ -65,10 +65,7 @@ const getAvailableShifts = async (req, res) => {
 const remove = async (req, res) => {
   const { shiftId } = req.body;
   const result = await db.shifts.remove(shiftId, req.user.organisationId);
-  if (result.rowCount === 1) {
-    return res.sendStatus(200);
-  }
-  return res.sendStatus(500);
+  return res.json({ deletedCount: result.rowCount });
 }
 
 const removeSeries = async (req, res) => {

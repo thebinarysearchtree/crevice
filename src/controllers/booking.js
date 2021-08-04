@@ -8,13 +8,14 @@ const db = {
 const insert = async (req, res) => {
   const { userId, shiftRoleIds } = req.body;
   const bookedById = req.user.id;
+  const isAdmin = req.user.isAdmin;
   const organisationId = req.user.organisationId;
   const client = await getPool().connect();
   try {
     await client.query('begin');
     const promises = [];
     for (const shiftRoleId of shiftRoleIds) {
-      const promise = await db.bookings.insert({ userId, shiftRoleId }, bookedById, organisationId, client);
+      const promise = await db.bookings.insert({ userId, shiftRoleId }, bookedById, isAdmin, organisationId, client);
       promises.push(promise);
     }
     const results = await Promise.all(promises);
@@ -33,8 +34,8 @@ const insert = async (req, res) => {
 
 const remove = async (req, res) => {
   const { userId, bookingId } = req.body;
-  const cancelledCount = await db.bookings.remove({ userId, bookingId }, req.user.isAdmin, req.user.organisationId);
-  return res.json({ cancelledCount });
+  const result = await db.bookings.remove({ userId, bookingId }, req.user.isAdmin, req.user.organisationId);
+  return res.json({ cancelledCount: result.rowCount });
 }
 
 export {

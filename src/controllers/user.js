@@ -496,6 +496,12 @@ const find = async (req, res) => {
   return res.send(result);
 }
 
+const findPotentialBookings = async (req, res) => {
+  const query = req.body;
+  const result = await db.users.findPotentialBookings(query, req.user.organisationId);
+  return res.send(result);
+}
+
 const getUserDetails = async (req, res) => {
   const { userId } = req.body;
   const userDetails = await db.users.getUserDetails(userId, req.user.organisationId);
@@ -557,8 +563,8 @@ const updateImages = async (req, res) => {
 
 const remove = async (req, res) => {
   const { userId } = req.body;
-  await db.users.remove(userId, req.user.organisationId);
-  return res.sendStatus(200);
+  const result = await db.users.remove(userId, req.user.organisationId);
+  return res.json({ deletedCount: result.rowCount });
 }
 
 export {
@@ -573,6 +579,7 @@ export {
   refreshToken,
   changePassword,
   find,
+  findPotentialBookings,
   getUserDetails,
   changeImage,
   updateImages,

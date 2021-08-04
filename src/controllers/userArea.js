@@ -37,8 +37,8 @@ const insertMany = async (req, res) => {
 
 const update = async (req, res) => {
   const userArea = req.body;
-  await db.userAreas.update(userArea, req.user.organisationId);
-  return res.sendStatus(200);
+  const result = await db.userAreas.update(userArea, req.user.organisationId);
+  return res.json({ updatedCount: result.rowCount });
 }
 
 const find = async (req, res) => {
@@ -49,8 +49,8 @@ const find = async (req, res) => {
 
 const remove = async (req, res) => {
   const { userAreaId } = req.body;
-  await db.userAreas.remove(userAreaId, req.user.organisationId);
-  return res.sendStatus(200);
+  const result = await db.userAreas.remove(userAreaId, req.user.organisationId);
+  return res.json({ deletedCount: result.rowCount });
 }
 
 export {

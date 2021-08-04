@@ -6,7 +6,7 @@ const pool = getPool();
 const insert = async ({
   userId,
   shiftRoleId
-}, bookedById, organisationId, client = pool) => {
+}, bookedById, isAdmin, organisationId, client = pool) => {
   const result = await client.query(sql`
     insert into bookings(
       shift_role_id,
@@ -20,13 +20,14 @@ const insert = async ({
       organisationId
     ]}
     where
+      ${isAdmin ? sql`` : sql`
       exists(
         select count(*) filter (where b.id is not null) < sr.capacity
         from
           shift_roles sr left join
           bookings b on b.shift_role_id = sr.id
         where sr.id = ${shiftRoleId}
-        group by sr.id) and
+        group by sr.id) and`}
       exists(
         select 1
         from
@@ -38,8 +39,9 @@ const insert = async ({
           sr.organisation_id = ${organisationId} and
           ua.user_id = ${userId} and
           s.start_time >= ua.start_time and
-          (ua.end_time is null or s.end_time < ua.end_time) and
-          s.start_time - interval '1 minute' * sr.book_before_minutes > now()) and
+          (ua.end_time is null or s.end_time < ua.end_time)
+          ${isAdmin ? sql`` : sql` and
+          s.start_time - interval '1 minute' * sr.book_before_minutes > now()`}) and
       not exists(
         select 1
         from
@@ -82,7 +84,7 @@ const remove = async ({
       organisation_id = ${organisationId}
       ${checkCancelQuery}`);
 
-  return result.rowCount;
+  return result;
 }
 
 export default {

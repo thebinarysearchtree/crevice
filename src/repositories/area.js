@@ -30,7 +30,7 @@ const update = async ({
   locationId,
   notes
 }, organisationId, client = pool) => {
-  await client.query(sql`
+  const result = await client.query(sql`
     update areas
     set
       name = ${name},
@@ -44,6 +44,7 @@ const update = async ({
         where
           id = ${locationId} and
           organisation_id = ${organisationId}))`);
+  return result;
 }
 
 const getById = async (areaId, organisationId, client = pool) => {

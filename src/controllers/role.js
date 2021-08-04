@@ -12,8 +12,8 @@ const insert = async (req, res) => {
 
 const update = async (req, res) => {
   const role = req.body;
-  await db.roles.update(role, req.user.organisationId);
-  return res.sendStatus(200);
+  const result = await db.roles.update(role, req.user.organisationId);
+  return res.json({ updateCount: result.rowCount });
 }
 
 const getById = async (req, res) => {
@@ -34,8 +34,8 @@ const find = async (req, res) => {
 
 const remove = async (req, res) => {
   const { roleId } = req.body;
-  await db.roles.remove(roleId, req.user.organisationId);
-  return res.sendStatus(200);
+  const result = await db.roles.remove(roleId, req.user.organisationId);
+  return res.json({ deletedCount: result.rowCount });
 }
 
 export {

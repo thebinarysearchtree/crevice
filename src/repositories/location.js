@@ -29,7 +29,7 @@ const update = async ({
   timeZone,
   address
 }, organisationId, client = pool) => {
-  await client.query(`
+  const result = await client.query(`
     update locations
     set
       name = ${name},
@@ -38,6 +38,7 @@ const update = async ({
     where
       id = ${id} and
       organisation_id = ${organisationId}`);
+  return result;
 }
 
 const getById = async (locationId, organisationId, client = pool) => {
@@ -75,11 +76,12 @@ const find = async (organisationId, client = pool) => {
 }
 
 const remove = async (locationId, organisationId) => {
-  await client.query(sql`
+  const result = await client.query(sql`
     delete from locations
     where
       id = ${locationId} and
       organisation_id = ${organisationId}`);
+  return result;
 }
 
 export default {
