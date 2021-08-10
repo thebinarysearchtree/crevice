@@ -110,11 +110,12 @@ const find = async (userId, organisationId, client = pool) => {
 }
 
 const remove = async (userAreaId, organisationId, client = pool) => {
-  await client.query(sql`
+  const result = await client.query(sql`
     delete from user_areas
     where
       id = ${userAreaId} and
       organisation_id = ${organisationId}`);
+  return result;
 }
 
 export default {

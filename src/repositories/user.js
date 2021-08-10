@@ -298,9 +298,10 @@ const findPotentialBookings = async ({
   searchTerm,
   areaId,
   roleIds,
-  shiftStartTime
+  shiftStartTime,
+  bookedUserIds
 }, organisationId, client = pool) => {
-  searchTerm = `${searchTerm}%`;
+  searchTerm = `%${searchTerm}%`;
   
   const result = await client.query(wrap`
     select
@@ -319,6 +320,7 @@ const findPotentialBookings = async ({
       ua.area_id = ${areaId} and
       ua.start_time <= ${shiftStartTime} and
       (ua.end_time is null or ua.end_time > ${shiftStartTime}) and
+      ${bookedUserIds.length === 0 ? sql`` : sql`u.id not in (${bookedUserIds}) and`}
       u.organisation_id = ${organisationId}
     limit 5`);
   return result.rows[0].result;
