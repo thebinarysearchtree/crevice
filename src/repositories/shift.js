@@ -1,5 +1,7 @@
 import getPool from '../database/db.js';
-import { sql, wrap } from '../utils/data.js';
+import { sql, wrap, makeReviver } from '../utils/data.js';
+
+const reviver = makeReviver();
 
 const pool = getPool();
 
@@ -37,6 +39,22 @@ const find = async ({
   startTime,
   endTime
 }, organisationId, client = pool) => {
+  if (!areaId) {
+    const areaResult = await client.query(wrap`
+      select 
+        a.id, 
+        l.time_zone
+      from
+        areas a join
+        locations l on a.location_id = l.id
+      where a.organisation_id = ${organisationId}
+      order by l.name asc, a.name asc
+      limit 1`);
+    const { id, timeZone } = JSON.parse(areaResult.rows[0].result, reviver)[0];
+    areaId = id;
+    startTime += timeZone;
+    endTime += timeZone;
+  }
   const shiftRolesQuery = sql`
     select
       sr.*,
