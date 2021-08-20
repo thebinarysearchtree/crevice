@@ -79,7 +79,7 @@ const find = async ({
       s.organisation_id = ${organisationId}
     group by sr.id, r.name, r.colour`;
 
-  const result = await client.query(wrap`
+  const shiftsQuery = sql`
     select
       s.id,
       s.start_time at time zone l.time_zone as start_time,
@@ -97,7 +97,13 @@ const find = async ({
       areas a on s.area_id = a.id join
       locations l on a.location_id = l.id
     group by s.id, l.time_zone
-    order by s.start_time asc`);
+    order by s.start_time asc`;
+  const result = await client.query(wrap`
+    select
+      cast(${areaId} as integer) as area_id,
+      coalesce(json_agg(s), json_build_array()) as shifts
+    from
+      (${shiftsQuery}) as s`);
   return result.rows[0].result;
 }
 
