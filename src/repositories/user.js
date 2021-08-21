@@ -214,7 +214,8 @@ const find = async ({
   areaId,
   activeDate,
   activeState,
-  page
+  page,
+  count
 }, isAdmin, areaIds, organisationId, client = pool) => {
   const select = [];
   const where = [];
@@ -251,7 +252,7 @@ const find = async ({
       having = sql`having count(*) filter (where ua.start_time < now() and ua.end_time < now()) > 0`;
     }
   }
-  if (page === 0) {
+  if (page === 0 || count === null) {
     select.push(sql`count(*) over() as total_count,`);
   }
 
