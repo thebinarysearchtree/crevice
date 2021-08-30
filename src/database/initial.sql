@@ -63,18 +63,6 @@ create table roles (
 
 create index roles_organisation_id_index on roles(organisation_id);
 
-create table booking_followers (
-    id serial primary key,
-    user_id integer not null references users on delete cascade,
-    follower_id integer not null references users on delete cascade,
-    follower_role_id integer not null references roles on delete cascade,
-    start_time timestamptz not null,
-    end_time timestamptz not null,
-    organisation_id integer not null references organisations on delete cascade
-);
-
-create index booking_followers_user_id_index on booking_followers(user_id);
-
 create table files (
     id uuid primary key,
     filename text not null,
@@ -121,37 +109,6 @@ create table areas (
 create index areas_location_id_index on areas(location_id);
 create index areas_organisation_id_index on areas(organisation_id);
 
-create table placement_groups (
-    id serial primary key,
-    name text not null,
-    start_time timestamptz,
-    end_time timestamptz,
-    notes text,
-    organisation_id integer not null references organisations on delete cascade
-);
-
-create index placement_groups_organisation_id_index on placement_groups(organisation_id);
-
-create table placements (
-    id serial primary key,
-    group_id integer not null references placement_groups on delete cascade,
-    user_id integer not null references users on delete cascade,
-    minutes_required integer,
-    organisation_id integer not null references organisations on delete cascade
-);
-
-create index placements_group_id_index on placements(group_id);
-create index placements_user_id_index on placements(user_id);
-
-create table placement_files (
-    id serial primary key,
-    placement_id integer not null references placements on delete cascade,
-    file_id uuid not null references files on delete cascade,
-    organisation_id integer not null references organisations on delete cascade
-);
-
-create index placement_files_placement_id_index on placement_files(placement_id);
-
 create table fields (
     id serial primary key,
     name text not null,
@@ -178,18 +135,6 @@ create table field_items (
 );
 
 create index field_items_field_id_index on field_items(field_id);
-
-create table placement_fields (
-    id serial primary key,
-    placement_id integer not null references placements on delete cascade,
-    field_id integer not null references fields on delete cascade,
-    required_value text,
-    at_least timestamptz,
-    at_most timestamptz,
-    organisation_id integer not null references organisations on delete cascade
-);
-
-create index placement_fields_placement_id_index on placement_fields(placement_id);
 
 create table user_fields (
     id serial primary key,
@@ -243,56 +188,6 @@ create table shifts (
 );
 
 create index shifts_index on shifts(area_id, start_time);
-
-create table tasks (
-    id serial primary key,
-    name text not null,
-    organisation_id integer not null references organisations on delete cascade
-);
-
-create index tasks_organisation_id_index on tasks(organisation_id);
-
-create table placement_tasks (
-    id serial primary key,
-    placement_id integer not null references placements on delete cascade,
-    task_id integer not null references tasks on delete cascade,
-    minutes_required integer not null,
-    organisation_id integer not null references organisations on delete cascade
-);
-
-create index placement_tasks_placement_id_index on placement_tasks(placement_id);
-
-create table shift_tasks (
-    id serial primary key,
-    shift_id integer not null references shifts on delete cascade,
-    task_id integer not null references tasks on delete cascade,
-    duration_minutes integer not null,
-    organisation_id integer not null references organisations on delete cascade
-);
-
-create index shift_tasks_shift_id_index on shift_tasks(shift_id);
-
-create table adhoc_tasks (
-    id serial primary key,
-    booking_id integer not null references bookings on delete cascade,
-    task_id integer not null references tasks on delete cascade,
-    duration_minutes integer not null,
-    created_at timestamptz not null default now(),
-    created_by integer references users on delete set null,
-    organisation_id integer not null references organisations on delete cascade
-);
-
-create index adhoc_tasks_booking_id_index on adhoc_tasks(booking_id);
-
-create table shift_prerequisites (
-    id serial primary key,
-    shift_id integer not null references shifts on delete cascade,
-    task_id integer not null references tasks on delete cascade,
-    minutes_required integer not null,
-    organisation_id integer not null references organisations on delete cascade
-);
-
-create index shift_prerequisites_shift_index on shift_prerequisites(shift_id);
 
 create table shift_roles (
     id serial primary key,

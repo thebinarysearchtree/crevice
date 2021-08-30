@@ -19,9 +19,8 @@ const insert = async ({
       select 1 from locations
       where
         id = ${locationId} and
-        organisation_id = ${organisationId})
-    returning id`);
-  return result.rows[0].id;
+        organisation_id = ${organisationId})`);
+  return result;
 }
 
 const update = async ({
@@ -43,7 +42,7 @@ const update = async ({
         select 1 from locations
         where
           id = ${locationId} and
-          organisation_id = ${organisationId}))`);
+          organisation_id = ${organisationId})`);
   return result;
 }
 
@@ -130,11 +129,12 @@ const find = async (organisationId, client = pool) => {
 }
 
 const remove = async (areaId, organisationId, client = pool) => {
-  await client.query(sql`
+  const result = await client.query(sql`
     delete from areas
     where
       id = ${areaId} and
       organisation_id = ${organisationId}`);
+  return result;
 }
 
 export default {

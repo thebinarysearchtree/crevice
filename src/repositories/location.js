@@ -18,9 +18,8 @@ const insert = async ({
       name,
       timeZone,
       address,
-      organisationId]})
-    returning id`);
-  return result.rows[0].id;
+      organisationId]})`);
+  return result;
 }
 
 const update = async ({
@@ -75,7 +74,7 @@ const find = async (organisationId, client = pool) => {
   return result.rows[0].result;
 }
 
-const remove = async (locationId, organisationId) => {
+const remove = async (locationId, organisationId, client = pool) => {
   const result = await client.query(sql`
     delete from locations
     where

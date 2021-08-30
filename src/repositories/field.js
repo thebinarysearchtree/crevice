@@ -19,7 +19,7 @@ const insert = async ({
     from fields
     where organisation_id = ${organisationId}
     returning id`);
-  return result.rows[0].id;
+  return { fieldId: result.rows[0].id, rowCount: result.rowCount };
 }
 
 const update = async (fieldId, name, organisationId, client = pool) => {

@@ -39,7 +39,7 @@ const insert = async (req, res) => {
     }
     await Promise.all(promises);
     await client.query('commit');
-    return res.sendStatus(200);
+    return res.json({ rowCount: 1 });
   }
   catch (e) {
     await client.query('rollback');

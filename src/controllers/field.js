@@ -8,7 +8,7 @@ const db = {
 };
 
 const insertSelect = async (field, organisationId, client) => {
-  const fieldId = await db.fields.insert(field, organisationId, client);
+  const { fieldId, rowCount } = await db.fields.insert(field, organisationId, client);
   const promises = [];
   for (const item of field.selectItems) {
     const { name, itemNumber } = item;
@@ -16,7 +16,7 @@ const insertSelect = async (field, organisationId, client) => {
     promises.push(promise);
   }
   await Promise.all(promises);
-  return fieldId;
+  return rowCount;
 }
 
 const insert = async (req, res) => {
@@ -26,16 +26,15 @@ const insert = async (req, res) => {
   const client = await getPool().connect();
   try {
     await client.query('begin');
-    let fieldId;
+    let result;
     if (fieldType === 'Select') {
-      fieldId = await insertSelect(field, organisationId, client);
+      result = await insertSelect(field, organisationId, client);
     }
     else {
-      fieldId = await db.fields.insert(field, organisationId, client);
+      result = await db.fields.insert(field, organisationId, client);
     }
-    const savedField = await db.fields.getById(fieldId, organisationId, client);
     await client.query('commit');
-    return res.send(savedField);
+    return res.json({ rowCount: result.rowCount });
   }
   catch (e) {
     await client.query('rollback');
@@ -52,9 +51,11 @@ const update = async (req, res) => {
   const client = await getPool().connect();
   try {
     await client.query('begin');
+    let rowCount = 0;
     const field = await db.fields.getById(fieldId, organisationId, client);
     if (name !== existingName) {
-      await db.fields.update(fieldId, name, organisationId, client);
+      const result = await db.fields.update(fieldId, name, organisationId, client);
+      rowCount += result.rowCount;
     }
     if (field.fieldType === 'Select') {
       const existingItemIds = field.selectItems.map(i => i.id);
@@ -75,11 +76,13 @@ const update = async (req, res) => {
           promises.push(promise);
         }
       }
-      await Promise.all(promises);
+      const results = await Promise.all(promises);
+      for (const result of results) {
+        rowCount += result.rowCount;
+      }
     }
-    const updatedField = await db.fields.getById(fieldId, organisationId, client);
     await client.query('commit');
-    return res.send(updatedField);
+    return res.json({ rowCount });
   }
   catch (e) {
     await client.query('rollback');
@@ -92,8 +95,8 @@ const update = async (req, res) => {
 
 const moveUp = async (req, res) => {
   const { fieldId } = req.body;
-  await db.fields.moveUp(fieldId, req.user.organisationId);
-  return res.sendStatus(200);
+  const result = await db.fields.moveUp(fieldId, req.user.organisationId);
+  return res.json({ rowCount: result.rowCount });
 }
 
 const getById = async (req, res) => {
@@ -129,8 +132,8 @@ const find = async (req, res) => {
 
 const remove = async (req, res) => {
   const { fieldId } = req.body;
-  const result = await db.fields.remove(fieldId, req.user.organisationId);
-  return res.json({ deletedCount: result.rowCount });
+  await db.fields.remove(fieldId, req.user.organisationId);
+  return res.json({ rowCount: 1 });
 }
 
 export {

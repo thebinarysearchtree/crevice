@@ -14,9 +14,8 @@ const insert = async ({
       name,
       item_number,
       organisation_id)
-    values(${[fieldId, name, itemNumber, organisationId]})
-    returning id`);
-  return result.rows[0].id;
+    values(${[fieldId, name, itemNumber, organisationId]})`);
+  return result;
 }
 
 const update = async ({

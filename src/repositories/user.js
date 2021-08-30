@@ -212,8 +212,6 @@ const find = async ({
   searchTerm,
   roleId,
   areaId,
-  activeDate,
-  activeState,
   page,
   count
 }, isAdmin, areaIds, organisationId, client = pool) => {
@@ -237,20 +235,6 @@ const find = async ({
   }
   if (areaId !== -1) {
     where.push(sql`and a.id = ${areaId}`);
-  }
-  if (activeDate) {
-    where.push(sql`and ua.start_time <= ${activeDate} and (ua.end_time is null or ua.end_time > ${activeDate})`);
-  }
-  if (activeState !== 'All') {
-    if (activeState === 'Current') {
-      having = sql`having count(*) filter (where ua.start_time <= now() and (ua.end_time is null or ua.end_time > now())) > 0`;
-    }
-    else if (activeState === 'Future') {
-      having = sql`having count(*) filter (where ua.start_time > now()) > 0`;
-    }
-    else {
-      having = sql`having count(*) filter (where ua.start_time < now() and ua.end_time < now()) > 0`;
-    }
   }
   if (page === 0 || count === null) {
     select.push(sql`count(*) over() as total_count,`);
@@ -288,7 +272,7 @@ const find = async ({
     where
       u.organisation_id = ${organisationId}
       ${where}
-    group by u.id, r.name, r.colour, s.booked, s.attended, s.attended_time
+    group by u.id, s.booked, s.attended, s.attended_time
     ${having}
     order by u.last_name asc
     limit ${limit} offset ${offset}`);
