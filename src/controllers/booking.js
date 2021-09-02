@@ -6,7 +6,7 @@ const db = {
 };
 
 const insert = async (req, res) => {
-  const { userId, shiftRoleIds } = req.body;
+  const { userId, shifts } = req.body;
   const bookedById = req.user.id;
   const isAdmin = req.user.isAdmin;
   const organisationId = req.user.organisationId;
@@ -14,8 +14,9 @@ const insert = async (req, res) => {
   try {
     await client.query('begin');
     const promises = [];
-    for (const shiftRoleId of shiftRoleIds) {
-      const promise = await db.bookings.insert({ userId, shiftRoleId }, bookedById, isAdmin, organisationId, client);
+    for (const shift of shifts) {
+      const { shiftId, shiftRoleId } = shift;
+      const promise = await db.bookings.insert({ userId, shiftId, shiftRoleId }, bookedById, isAdmin, organisationId, client);
       promises.push(promise);
     }
     const results = await Promise.all(promises);

@@ -171,27 +171,33 @@ create table question_groups (
 
 create index question_groups_organisation_id_index on question_groups(organisation_id);
 
+create table shift_series (
+    id serial primary key,
+    interval_weeks integer,
+    end_date timestamptz,
+    notes text,
+    created_at timestamptz not null default now(),
+    created_by integer not null references users on delete cascade,
+    question_group_id integer references question_groups on delete set null,
+    organisation_id integer not null references organisations on delete cascade
+);
+
 create table shifts (
     id serial primary key,
     area_id integer not null references areas on delete cascade,
     start_time timestamptz not null,
     end_time timestamptz not null,
     break_minutes integer not null,
-    notes text,
-    created_at timestamptz not null default now(),
-    created_by integer not null references users on delete cascade,
-    requires_approval boolean not null,
-    approved_by integer references users on delete set null,
-    question_group_id integer references question_groups on delete set null,
-    series_id uuid,
+    series_id integer not null references shift_series on delete cascade,
     organisation_id integer not null references organisations on delete cascade
 );
 
 create index shifts_index on shifts(area_id, start_time);
+create index shifts_series_id_index on shifts(series_id);
 
 create table shift_roles (
     id serial primary key,
-    shift_id integer not null references shifts on delete cascade,
+    series_id integer not null references shift_series on delete cascade,
     role_id integer not null references roles on delete cascade,
     capacity integer not null check (capacity >= 0),
     cancel_before_minutes integer not null,
@@ -200,10 +206,11 @@ create table shift_roles (
     organisation_id integer not null references organisations on delete cascade
 );
 
-create index shift_roles_shift_id_index on shift_roles(shift_id);
+create index shift_roles_series_id_index on shift_roles(series_id);
 
 create table bookings (
     id serial primary key,
+    shift_id integer not null references shifts on delete cascade,
     shift_role_id integer not null references shift_roles on delete cascade,
     user_id integer not null references users on delete cascade,
     booked_at timestamptz not null default now(),
@@ -211,6 +218,7 @@ create table bookings (
     organisation_id integer not null references organisations on delete cascade
 );
 
+create index bookings_shift_id_index on bookings(shift_id);
 create index bookings_shift_role_id_index on bookings(shift_role_id);
 create index bookings_user_id_index on bookings(user_id);
 

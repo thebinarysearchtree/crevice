@@ -1,21 +1,29 @@
 import getPool from '../database/db.js';
+import shiftSeriesRepository from '../repositories/shiftSeries.js';
 import shiftRepository from '../repositories/shift.js';
 import shiftRoleRepository from '../repositories/shiftRole.js';
-import { v4 as uuid } from 'uuid';
 
 const db = {
+  shiftSeries: shiftSeriesRepository,
   shifts: shiftRepository,
   shiftRoles: shiftRoleRepository
 };
 
 const insert = async (req, res) => {
-  const { shift, shiftRoles } = req.body;
+  const { series, shift, shiftRoles } = req.body;
+  const userId = req.user.id;
   const organisationId = req.user.organisationId;
   const client = await getPool().connect();
   try {
     await client.query('begin');
-    const { areaId, times, breakMinutes, notes } = shift;
-    const seriesId = times.length === 1 ? null : uuid();
+    const { intervalWeeks, endDate, notes, questionGroupId } = series;
+    const { areaId, times, breakMinutes } = shift;
+    const seriesId = await db.shiftSeries.insert({
+      intervalWeeks,
+      endDate,
+      notes,
+      questionGroupId
+    }, userId, organisationId, client);
     let promises = [];
     for (const range of times) {
       const { startTime, endTime } = range;
@@ -24,17 +32,15 @@ const insert = async (req, res) => {
         startTime, 
         endTime, 
         breakMinutes, 
-        notes,
         seriesId
       };
-      const promise = db.shifts.insert(shift, req.user.id, organisationId, client);
+      const promise = db.shifts.insert(shift, organisationId, client);
       promises.push(promise);
     }
-    const shiftIds = await Promise.all(promises);
-    const shiftId = shiftIds[0];
+    await Promise.all(promises);
     promises = [];
     for (const shiftRole of shiftRoles) {
-      const promise = db.shiftRoles.insert({...shiftRole, seriesId, shiftId }, organisationId, client);
+      const promise = db.shiftRoles.insert({...shiftRole, seriesId }, organisationId, client);
       promises.push(promise);
     }
     await Promise.all(promises);
@@ -68,16 +74,9 @@ const remove = async (req, res) => {
   return res.json({ deletedCount: result.rowCount });
 }
 
-const removeSeries = async (req, res) => {
-  const query = req.body;
-  const result = await db.shifts.removeSeries(query, req.user.organisationId);
-  return res.json({ deletedCount: result.rowCount });
-}
-
 export {
   insert,
   find,
   getAvailableShifts,
-  remove,
-  removeSeries
+  remove
 };

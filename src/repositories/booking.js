@@ -5,15 +5,18 @@ const pool = getPool();
 
 const insert = async ({
   userId,
+  shiftId,
   shiftRoleId
 }, bookedById, isAdmin, organisationId, client = pool) => {
   const result = await client.query(sql`
     insert into bookings(
+      shift_id,
       shift_role_id,
       user_id,
       booked_by,
       organisation_id)
     select ${[
+      shiftId,
       shiftRoleId,
       userId,
       bookedById,
@@ -26,15 +29,19 @@ const insert = async ({
         from
           shift_roles sr left join
           bookings b on b.shift_role_id = sr.id
-        where sr.id = ${shiftRoleId}
+        where 
+          b.shift_id = ${shiftId} and
+          sr.id = ${shiftRoleId}
         group by sr.id) and`}
       exists(
         select 1
         from
           shifts s join
-          shift_roles sr on sr.shift_id = s.id join
+          shift_series ss on s.series_id = ss.id join
+          shift_roles sr on sr.series_id = ss.id join
           user_areas ua on ua.area_id = s.area_id and ua.role_id = sr.role_id
         where
+          s.id = ${shiftId} and
           sr.id = ${shiftRoleId} and
           sr.organisation_id = ${organisationId} and
           ua.user_id = ${userId} and
@@ -46,14 +53,18 @@ const insert = async ({
         select 1
         from
           shifts s join
-          shift_roles sr on sr.shift_id = s.id join
-          bookings b on b.shift_role_id = sr.id join
+          shift_series ss on s.series_id = ss.id join
+          shift_roles sr on sr.series_id = ss.id join
+          bookings b on b.shift_id = s.id and b.shift_role_id = sr.id join
           (
             select s.start_time, s.end_time
             from
               shifts s join
-              shift_roles sr on sr.shift_id = s.id
-            where sr.id = ${shiftRoleId}
+              shift_series ss on s.series_id = ss.id join
+              shift_roles sr on sr.series_id = ss.id
+            where 
+              s.id = ${shiftId} and 
+              sr.id = ${shiftRoleId}
           ) as o on o.start_time <= s.end_time and o.end_time >= s.start_time
         where b.user_id = ${userId})
     returning id`);
@@ -68,9 +79,10 @@ const remove = async ({
     and exists(
       select 1
       from
-        bookings b join
-        shift_roles sr on b.shift_role_id = sr.id join
-        shifts s on sr.shift_id = s.id
+        shift_series ss join
+        shifts s on s.series_id = ss.id join
+        shift_roles sr on sr.series_id = ss.id join
+        bookings b on b.shift_id = s.id and b.shift_role_id = sr.id
       where
         b.id = ${bookingId} and
         sr.can_book_and_cancel and

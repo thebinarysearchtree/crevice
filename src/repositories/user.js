@@ -247,9 +247,10 @@ const find = async ({
       count(*) filter (where s.start_time <= now()) as attended,
       sum(s.end_time - s.start_time) filter (where s.start_time <= now()) as attended_time
     from
-      bookings b join
-      shift_roles sr on b.shift_role_id = sr.id join
-      shifts s on sr.shift_id = s.id
+      shift_series ss join
+      shifts s on s.series_id = ss.id join
+      shift_roles sr on sr.series_id = ss.id join
+      bookings b on b.shift_id = s.id and b.shift_role_id = sr.id
     group by b.user_id`;
   
   const result = await client.query(wrap`
