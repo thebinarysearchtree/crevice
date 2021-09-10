@@ -22,6 +22,7 @@ const insert = async ({
       organisation_id)
     select ${[areaId, startTime, endTime, breakMinutes, seriesId, organisationId]}
     where 
+      cast(${endTime} as timestamptz) > cast(${startTime} as timestamptz) and
       exists(
         select 1 from areas
         where
@@ -34,6 +35,37 @@ const insert = async ({
           organisation_id = ${organisationId})
     returning id`);
   return result.rows[0].id;
+}
+
+const updateSeriesId = async (shiftId, seriesId, organisationId, client = pool) => {
+  const result = await client.query(sql`
+    update shifts
+    set series_id = ${seriesId}
+    where
+      id = ${shiftId} and
+      organisation_id = ${organisationId}`);
+  return result;
+}
+
+const update = async ({
+  seriesId,
+  initialStartTime,
+  initialEndTime,
+  updatedStartTime,
+  updatedEndTime,
+  breakMinutes
+}, organisationId, client = pool) => {
+  const result = await client.query(sql`
+    update shifts
+    set
+      start_time = start_time + (cast(${updatedStartTime} as timestamptz) - cast(${initialStartTime} as timestamptz)),
+      end_time = end_time + (cast(${updatedEndTime} as timestamptz) - cast(${initialEndTime} as timestamptz)),
+      break_minutes = ${breakMinutes}
+    where
+      series_id = ${seriesId} and
+      organisation_id = ${organisationId} and
+      cast(${updatedEndTime} as timestamptz) > cast(${updatedStartTime} as timestamptz)`);
+  return result;
 }
 
 const find = async ({
@@ -90,9 +122,10 @@ const find = async ({
       s.end_time at time zone l.time_zone as end_time,
       s.break_minutes,
       to_char(coalesce(s.end_time - s.start_time, interval '0 hours'), 'HH24:MI') as duration,
+      ss.is_single,
       ss.notes,
       s.series_id,
-      json_agg(sr) as shift_roles,
+      json_agg(sr order by sr.role_name asc) as shift_roles,
       sum(sr.capacity) as capacity,
       sum(sr.booked_count) as booked
     from
@@ -205,6 +238,8 @@ const remove = async (shiftId, organisationId, client = pool) => {
 
 export default {
   insert,
+  updateSeriesId,
+  update,
   find,
   getAvailableShifts,
   remove

@@ -71,6 +71,28 @@ const insert = async ({
   return result;
 }
 
+const transfer = async (shiftId, seriesId, organisationId, client = pool) => {
+  const result = await client.query(sql`
+    update bookings
+    set shift_role_id = r.shift_role_id
+    from (
+      select
+        b.id as booking_id,
+        sr2.id as shift_role_id
+      from
+        bookings b join
+        shift_roles sr1 on b.shift_role_id = sr1.id join
+        shift_roles sr2 on 
+          sr2.role_id = sr1.role_id and 
+          sr2.series_id = ${seriesId}
+      where
+        b.shift_id = ${shiftId} and
+        b.organisation_id = ${organisationId} and
+        sr2.organisation_id = ${organisationId}) as r
+    where id = r.booking_id`);
+  return result;
+}
+
 const remove = async ({
   userId,
   bookingId
@@ -101,5 +123,6 @@ const remove = async ({
 
 export default {
   insert,
+  transfer,
   remove
 };

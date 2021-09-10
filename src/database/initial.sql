@@ -173,8 +173,7 @@ create index question_groups_organisation_id_index on question_groups(organisati
 
 create table shift_series (
     id serial primary key,
-    interval_weeks integer,
-    end_date timestamptz,
+    is_single boolean not null,
     notes text,
     created_at timestamptz not null default now(),
     created_by integer not null references users on delete cascade,
