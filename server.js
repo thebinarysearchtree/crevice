@@ -11,6 +11,8 @@ import userAreas from './src/routes/userArea.js';
 import shifts from './src/routes/shift.js';
 import bookings from './src/routes/booking.js';
 import shiftSeries from './src/routes/shiftSeries.js';
+import followers from './src/routes/follower.js';
+import followerNotes from './src/routes/followerNote.js';
 
 const app = express();
 
@@ -28,6 +30,8 @@ app.use('/userAreas', userAreas);
 app.use('/shifts', shifts);
 app.use('/bookings', bookings);
 app.use('/shiftSeries', shiftSeries);
+app.use('/followers', followers);
+app.use('/followerNotes', followerNotes);
 
 const server = app.listen(config.port);
 

@@ -15,6 +15,7 @@ import {
   changePassword, 
   find,
   findPotentialBookings,
+  findByName,
   getUserDetails, 
   remove, 
   changeImage, 
@@ -37,6 +38,7 @@ router.post('/checkeEmailExists', auth, wrap(checkEmailExists));
 router.post('/changePassword', auth, wrap(changePassword));
 router.post('/find', auth, wrap(find));
 router.post('/findPotentialBookings', auth, wrap(findPotentialBookings));
+router.post('/findByName', auth, wrap(findByName));
 router.post('/getUserDetails', [auth, admin], wrap(getUserDetails));
 router.post('/remove', [auth, admin], wrap(remove));
 

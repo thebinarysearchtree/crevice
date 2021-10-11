@@ -312,6 +312,22 @@ const findPotentialBookings = async ({
   return result.rows[0].result;
 }
 
+const findByName = async (searchTerm, organisationId, client = pool) => {
+  searchTerm = `%${searchTerm}%`;
+
+  const results = await client.query(wrap`
+    select
+      id,
+      concat_ws(' ', first_name, last_name) as name,
+      image_id
+    from users
+    where
+      concat_ws(' ', first_name, last_name) ilike ${searchTerm} and
+      organisation_id = ${organisationId}
+    limit 5`);
+  return results.rows[0].result;
+}
+
 const updateImageByPrimaryField = async ({
   fileId,
   fieldName,
@@ -430,6 +446,7 @@ export default {
   changePasswordWithToken,
   find,
   findPotentialBookings,
+  findByName,
   updateImageByPrimaryField,
   updateImageByCustomField,
   resetFailedPasswordAttempts,

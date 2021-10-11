@@ -43,14 +43,12 @@ create table users (
     organisation_id integer not null references organisations on delete cascade
 );
 
-create table assigned_users (
+create table followers (
     id serial primary key,
     user_id integer not null references users on delete cascade,
-    assigned_user_id integer not null references users on delete cascade,
-    start_time timestamptz not null,
-    end_time timestamptz,
+    following_user_id integer not null references users on delete cascade,
     organisation_id integer not null references organisations on delete cascade,
-    unique(user_id, assigned_user_id)
+    unique(user_id, following_user_id)
 );
 
 create table roles (
@@ -220,6 +218,15 @@ create table bookings (
 create index bookings_shift_id_index on bookings(shift_id);
 create index bookings_shift_role_id_index on bookings(shift_role_id);
 create index bookings_user_id_index on bookings(user_id);
+
+create table follower_notes (
+    id serial primary key,
+    created_by integer not null references users on delete cascade,
+    booking_id integer not null references bookings on delete cascade,
+    notes text,
+    organisation_id integer not null references organisations on delete cascade,
+    unique(booking_id, user_id)
+);
 
 create table questions (
     id serial primary key,

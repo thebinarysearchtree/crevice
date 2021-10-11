@@ -502,6 +502,12 @@ const findPotentialBookings = async (req, res) => {
   return res.send(result);
 }
 
+const findByName = async (req, res) => {
+  const { searchTerm } = req.body;
+  const result = await db.users.findByName(searchTerm, req.user.organisationId);
+  return res.send(result);
+}
+
 const getUserDetails = async (req, res) => {
   const { userId } = req.body;
   const userDetails = await db.users.getUserDetails(userId, req.user.organisationId);
@@ -580,6 +586,7 @@ export {
   changePassword,
   find,
   findPotentialBookings,
+  findByName,
   getUserDetails,
   changeImage,
   updateImages,
