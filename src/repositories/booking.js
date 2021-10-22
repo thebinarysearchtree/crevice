@@ -39,6 +39,7 @@ const insert = async ({
           shifts s join
           shift_series ss on s.series_id = ss.id join
           shift_roles sr on sr.series_id = ss.id join
+          roles r on sr.role_id = r.id join
           user_areas ua on ua.area_id = s.area_id and ua.role_id = sr.role_id
         where
           s.id = ${shiftId} and
@@ -48,7 +49,7 @@ const insert = async ({
           s.start_time >= ua.start_time and
           (ua.end_time is null or s.end_time < ua.end_time)
           ${isAdmin ? sql`` : sql` and
-          s.start_time - interval '1 minute' * sr.book_before_minutes > now()`}) and
+          s.start_time - interval '1 minute' * r.book_before_minutes > now()`}) and
       not exists(
         select 1
         from
@@ -104,11 +105,12 @@ const remove = async ({
         shift_series ss join
         shifts s on s.series_id = ss.id join
         shift_roles sr on sr.series_id = ss.id join
+        roles r on sr.role_id = r.id join
         bookings b on b.shift_id = s.id and b.shift_role_id = sr.id
       where
         b.id = ${bookingId} and
-        sr.can_book_and_cancel and
-        s.start_time - interval '1 minute' * sr.cancel_before_minutes > now())`;
+        r.can_book_and_cancel and
+        s.start_time - interval '1 minute' * r.cancel_before_minutes > now())`;
 
   const result = await client.query(sql`
     delete from bookings

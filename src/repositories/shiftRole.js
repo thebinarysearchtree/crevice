@@ -6,27 +6,18 @@ const pool = getPool();
 const insert = async ({
   seriesId,
   roleId,
-  capacity,
-  cancelBeforeMinutes,
-  bookBeforeMinutes,
-  canBookAndCancel
+  capacity
 }, organisationId, client = pool) => {
   const result = await client.query(sql`
     insert into shift_roles(
       series_id,
       role_id,
       capacity,
-      cancel_before_minutes,
-      book_before_minutes,
-      can_book_and_cancel,
       organisation_id)
     select ${[
       seriesId,
       roleId,
       capacity,
-      cancelBeforeMinutes,
-      bookBeforeMinutes,
-      canBookAndCancel,
       organisationId]}
     where
       exists(
@@ -54,17 +45,11 @@ const copy = async (fromSeriesId, toSeriesId, organisationId, client = pool) => 
       series_id,
       role_id,
       capacity,
-      cancel_before_minutes,
-      book_before_minutes,
-      can_book_and_cancel,
       organisation_id)
     select
       ${toSeriesId} as series_id,
       role_id,
       capacity,
-      cancel_before_minutes,
-      book_before_minutes,
-      can_book_and_cancel,
       organisation_id
     from shift_roles
     where
@@ -77,19 +62,12 @@ const update = async ({
   id,
   seriesId,
   roleId,
-  capacity,
-  cancelBeforeMinutes,
-  bookBeforeMinutes,
-  canBookAndCancel
+  capacity
 }, organisationId, client = pool) => {
   const where = id ? sql`id = ${id}` : sql`series_id = ${seriesId} and role_id = ${roleId}`;
   const result = await client.query(sql`
     update shift_roles
-    set
-      capacity = ${capacity},
-      cancel_before_minutes = ${cancelBeforeMinutes},
-      book_before_minutes = ${bookBeforeMinutes},
-      can_book_and_cancel = ${canBookAndCancel}
+    set capacity = ${capacity}
     where
       ${where} and
       organisation_id = ${organisationId}`);

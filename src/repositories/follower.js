@@ -24,7 +24,7 @@ const find = async ({
       concat_ws(' ', u.first_name, u.last_name) as name,
       u.image_id,
       case when s.id is null then null else json_build_object(
-        'id', s.id,
+        'booking_id', b.id,
         'area_name', a.name,
         'role_name', r.name,
         'role_colour', r.colour,

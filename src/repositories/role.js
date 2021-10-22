@@ -5,27 +5,46 @@ const pool = getPool();
 
 const insert = async ({
   name, 
-  colour 
+  colour,
+  cancelBeforeMinutes,
+  bookBeforeMinutes,
+  canBookAndCancel
 }, organisationId, client = pool) => {
   const result = await client.query(sql`
     insert into roles(
       name,
       colour,
+      cancel_before_minutes,
+      book_before_minutes,
+      can_book_and_cancel,
       organisation_id)
-    values(${[name, colour, organisationId]})`);
+    values(${[
+      name, 
+      colour, 
+      cancelBeforeMinutes, 
+      bookBeforeMinutes, 
+      canBookAndCancel, 
+      organisationId
+    ]})`);
   return result;
 }
 
 const update = async ({
   id, 
   name,
-  colour
+  colour,
+  cancelBeforeMinutes,
+  bookBeforeMinutes,
+  canBookAndCancel
  }, organisationId, client = pool) => {
   const result = await client.query(sql`
     update roles
     set 
       name = ${name},
-      colour = ${colour}
+      colour = ${colour},
+      cancel_before_minutes = ${cancelBeforeMinutes},
+      book_before_minutes = ${bookBeforeMinutes},
+      can_book_and_cancel = ${canBookAndCancel}
     where
       id = ${id} and
       organisation_id = ${organisationId}`);

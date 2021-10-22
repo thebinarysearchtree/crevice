@@ -55,6 +55,9 @@ create table roles (
     id serial primary key,
     name text not null,
     colour text not null,
+    cancel_before_minutes integer not null,
+    book_before_minutes integer not null,
+    can_book_and_cancel boolean not null,
     created_at timestamptz not null default now(),
     organisation_id integer not null references organisations on delete cascade
 );
@@ -197,9 +200,6 @@ create table shift_roles (
     series_id integer not null references shift_series on delete cascade,
     role_id integer not null references roles on delete cascade,
     capacity integer not null check (capacity >= 0),
-    cancel_before_minutes integer not null,
-    book_before_minutes integer not null,
-    can_book_and_cancel boolean not null,
     organisation_id integer not null references organisations on delete cascade
 );
 

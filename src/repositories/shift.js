@@ -184,8 +184,8 @@ const getAvailableShifts = async ({
       sr.*,
       s.id as shift_id,
       r.name,
-      sr.can_book_and_cancel and (s.start_time - interval '1 minute' * sr.book_before_minutes > now()) as can_book,
-      sr.can_book_and_cancel and (s.start_time - interval '1 minute' * sr.cancel_before_minutes > now()) as can_cancel,
+      r.can_book_and_cancel and (s.start_time - interval '1 minute' * r.book_before_minutes > now()) as can_book,
+      r.can_book_and_cancel and (s.start_time - interval '1 minute' * r.cancel_before_minutes > now()) as can_cancel,
       coalesce(bool_or(b.user_id = ${userId}), false) as booked,
       coalesce(json_agg(json_build_object(
         'id', b.user_id,
@@ -199,7 +199,7 @@ const getAvailableShifts = async ({
       roles r on sr.role_id = r.id left join
       bookings b on b.shift_id = s.id and b.shift_role_id = sr.id left join
       users u on b.user_id = u.id
-    group by s.id, sr.id, s.start_time, r.name`;
+    group by s.id, sr.id, r.id, s.start_time`;
 
   const result = await client.query(wrap`
     select
