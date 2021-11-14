@@ -7,12 +7,12 @@ const db = {
 
 const insert = async (req, res) => {
   const userArea = req.body;
-  const userAreaId = await db.userAreas.insert(userArea, req.user.organisationId);
-  return res.json({ userAreaId });
+  const result = await db.userAreas.insert(userArea, req.user.organisationId);
+  return res.json({ rowCount: result.rowCount });
 }
 
 const insertMany = async (req, res) => {
-  const { userAreas, userId } = req.body;
+  const userAreas = req.body;
   const promises = [];
   const client = await getPool().connect();
   try {
@@ -21,10 +21,10 @@ const insertMany = async (req, res) => {
       const promise = db.userAreas.insert(userArea, req.user.organisationId, client);
       promises.push(promise);
     }
-    await Promise.all(promises);
-    const updatedAreas = await db.userAreas.find(userId, req.user.organisationId, client);
+    const results = await Promise.all(promises);
     await client.query('commit');
-    return res.send(updatedAreas);
+    const rowCount = results.map(r => r.rowCount).filter(r => r !== 0).length;
+    return res.json({ rowCount });
   }
   catch (e) {
     await client.query('rollback');
@@ -38,7 +38,7 @@ const insertMany = async (req, res) => {
 const update = async (req, res) => {
   const userArea = req.body;
   const result = await db.userAreas.update(userArea, req.user.organisationId);
-  return res.json({ updatedCount: result.rowCount });
+  return res.json({ rowCount: result.rowCount });
 }
 
 const find = async (req, res) => {
@@ -50,7 +50,7 @@ const find = async (req, res) => {
 const remove = async (req, res) => {
   const { userAreaId } = req.body;
   const result = await db.userAreas.remove(userAreaId, req.user.organisationId);
-  return res.json({ deletedCount: result.rowCount });
+  return res.json({ rowCount: result.rowCount });
 }
 
 export {

@@ -41,7 +41,7 @@ const insert = async ({
           id = ${roleId} and
           organisation_id = ${organisationId})
     returning id`);
-  return result.rows[0].id;
+  return result;
 }
 
 const update = async ({
