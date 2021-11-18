@@ -259,7 +259,7 @@ const find = async ({
       concat_ws(' ', u.first_name, u.last_name) as name,
       u.image_id,
       ${select}
-      json_agg(json_build_object('name', r.name, 'colour', r.colour)) as roles,
+      json_agg(distinct r) as roles,
       json_agg(distinct a.name) as area_names,
       coalesce(s.booked, 0) as booked,
       coalesce(s.attended, 0) as attended,
