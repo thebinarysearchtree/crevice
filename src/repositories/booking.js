@@ -109,7 +109,6 @@ const remove = async ({
         bookings b on b.shift_id = s.id and b.shift_role_id = sr.id
       where
         b.id = ${bookingId} and
-        r.can_book_and_cancel and
         s.start_time - interval '1 minute' * r.cancel_before_minutes > now())`;
 
   const result = await client.query(sql`
