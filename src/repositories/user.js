@@ -173,7 +173,7 @@ const getTasks = async (organisationId, client = pool) => {
       not exists (select 1 from roles where organisation_id = ${organisationId}) as needs_roles,
       not exists (select 1 from locations where organisation_id = ${organisationId}) as needs_locations,
       not exists (select 1 from areas where organisation_id = ${organisationId}) as needs_areas,
-      not exists (select 1 from user_roles where organisation_id = ${organisationId}) as needs_users;`);
+      not exists (select 1 from user_roles where organisation_id = ${organisationId}) as needs_users`);
   return result.rows[0].result;
 }
 
@@ -219,7 +219,6 @@ const find = async ({
   const where = [];
   const limit = 10;
   const offset = limit * page;
-  let having = sql``;
 
   if (!isAdmin) {
     where.push(sql`and a.id in (${areaIds})`);
@@ -274,7 +273,6 @@ const find = async ({
       u.organisation_id = ${organisationId}
       ${where}
     group by u.id, s.booked, s.attended, s.attended_time
-    ${having}
     order by u.last_name asc
     limit ${limit} offset ${offset}`);
   return result.rows[0].result;
