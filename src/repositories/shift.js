@@ -165,7 +165,7 @@ const getAvailableShifts = async ({
       s.start_time < ${endTime} and
       ua.organisation_id = ${organisationId}
     group by s.id, sr.id
-    having sr.capacity > count(*) filter (where b.id is not null)`;
+    having sr.capacity > count(b.id)`;
 
   const bookedQuery = sql`
     select sr.id, s.id as shift_id

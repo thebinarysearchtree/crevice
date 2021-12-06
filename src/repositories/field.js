@@ -133,7 +133,7 @@ const find = async (organisationId, client = pool) => {
       f.name,
       f.field_type,
       f.field_number,
-      count(*) filter (where uf.id is not null) as user_count
+      count(uf.id) as user_count
     from
       fields f left join
       user_fields uf on uf.field_id = f.id left join

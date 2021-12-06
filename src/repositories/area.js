@@ -109,7 +109,7 @@ const find = async (organisationId, client = pool) => {
         'id', u.id,
         'name', concat_ws(' ', u.first_name, u.last_name),
         'image_id', u.image_id)) filter (where ua.is_admin is true), json_build_array()) as administrators,
-      count(*) filter (where ua.user_id is not null) as active_user_count
+      count(ua.user_id) as active_user_count
     from 
       areas a join
       locations l on l.id = a.location_id left join
