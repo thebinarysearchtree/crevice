@@ -17,4 +17,6 @@ const getPool = () => {
   return pool;
 }
 
-export default getPool;
+getPool();
+
+export default pool;

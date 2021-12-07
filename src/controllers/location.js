@@ -6,14 +6,14 @@ const db = {
 
 const insert = async (req, res) => {
   const location = req.body;
-  const result = await db.locations.insert(location, req.user.organisationId);
-  return res.json({ rowCount: result.rowCount });
+  const rowCount = await db.locations.insert(location, req.user.organisationId);
+  return res.json({ rowCount});
 }
 
 const update = async (req, res) => {
   const location = req.body;
-  const result = await db.locations.update(location, req.user.organisationId);
-  return res.json({ rowCount: result.rowCount });
+  const rowCount = await db.locations.update(location, req.user.organisationId);
+  return res.json({ rowCount });
 }
 
 const getById = async (req, res) => {
@@ -34,8 +34,8 @@ const find = async (req, res) => {
 
 const remove = async (req, res) => {
   const { locationId } = req.body;
-  const result = await db.locations.remove(locationId, req.user.organisationId);
-  return res.json({ rowCount: result.rowCount });
+  const rowCount = await db.locations.remove(locationId, req.user.organisationId);
+  return res.json({ rowCount });
 }
 
 export {

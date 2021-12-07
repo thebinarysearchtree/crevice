@@ -6,14 +6,14 @@ const db = {
 
 const insert = async (req, res) => {
   const area = req.body;
-  const result = await db.areas.insert(area, req.user.organisationId);
-  return res.json({ rowCount: result.rowCount });
+  const rowCount = await db.areas.insert(area, req.user.organisationId);
+  return res.json({ rowCount });
 }
 
 const update = async (req, res) => {
   const area = req.body;
-  const result = await db.areas.update(area, req.user.organisationId);
-  return res.json({ rowCount: result.rowCount });
+  const rowCount = await db.areas.update(area, req.user.organisationId);
+  return res.json({ rowCount });
 }
 
 const getById = async (req, res) => {
@@ -40,8 +40,8 @@ const find = async (req, res) => {
 
 const remove = async (req, res) => {
   const { areaId } = req.body;
-  const result = await db.areas.remove(areaId, req.user.organisationId);
-  return res.json({ rowCount: result.rowCount });
+  const rowCount = await db.areas.remove(areaId, req.user.organisationId);
+  return res.json({ rowCount });
 }
 
 export {

@@ -1,9 +1,10 @@
-import getPool from '../database/db.js';
-import { sql, wrap, makeReviver } from '../utils/data.js';
+import pool from '../database/db.js';
+import { makeReviver } from '../utils/data.js';
+import sql from '../../sql';
+
+const { files } = sql;
 
 const reviver = makeReviver();
-
-const pool = getPool();
 
 const insert = async ({
   fileId,
@@ -12,32 +13,23 @@ const insert = async ({
   sizeBytes,
   mimeType
 }, userId, organisationId, client = pool) => {
-  const result = await client.query(sql`
-    insert into files(
-      id,
-      filename,
-      original_name,
-      size_bytes,
-      mime_type,
-      uploaded_by,
-      organisation_id)
-    values(${[
-      fileId, 
-      filename, 
-      originalName, 
-      sizeBytes, 
-      mimeType, 
-      userId, 
-      organisationId]})`);
-  return result;
+  const text = files.insert;
+  const values = [
+    fileId, 
+    filename, 
+    originalName, 
+    sizeBytes, 
+    mimeType, 
+    userId, 
+    organisationId];
+  const result = await client.query(text, values);
+  return result.rowCount;
 }
 
 const getById = async (fileId, organisationId, client = pool) => {
-  const result = await client.query(wrap`
-    select * from files
-    where
-      id = ${fileId} and
-      organisation_id = ${organisationId}`, [fileId, organisationId]);
+  const text = files.getById;
+  const values = [fileId, organisationId];
+  const result = await client.query(text, values);
   return JSON.parse(result.rows[0].result, reviver)[0];
 }
 

@@ -6,14 +6,14 @@ const db = {
 
 const insert = async (req, res) => {
   const role = req.body;
-  const result = await db.roles.insert(role, req.user.organisationId);
-  return res.json({ rowCount: result.rowCount });
+  const rowCount = await db.roles.insert(role, req.user.organisationId);
+  return res.json({ rowCount });
 }
 
 const update = async (req, res) => {
   const role = req.body;
-  const result = await db.roles.update(role, req.user.organisationId);
-  return res.json({ rowCount: result.rowCount });
+  const rowCount = await db.roles.update(role, req.user.organisationId);
+  return res.json({ rowCount });
 }
 
 const getById = async (req, res) => {
@@ -34,8 +34,8 @@ const find = async (req, res) => {
 
 const remove = async (req, res) => {
   const { roleId } = req.body;
-  const result = await db.roles.remove(roleId, req.user.organisationId);
-  return res.json({ rowCount: result.rowCount });
+  const rowCount = await db.roles.remove(roleId, req.user.organisationId);
+  return res.json({ rowCount });
 }
 
 export {

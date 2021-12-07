@@ -1,7 +1,5 @@
-import getPool from '../database/db.js';
-import { sql, wrap } from '../utils/data.js';
-
-const pool = getPool();
+import pool from '../database/db.js';
+import sql from '../../sql';
 
 const insert = async ({
   userId,

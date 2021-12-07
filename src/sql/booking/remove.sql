@@ -2,8 +2,8 @@ delete from bookings
 where
     id = $2 and
     user_id = $1 and
-    organisation_id = $3 and
-    ($4 is true or exists(
+    organisation_id = $4 and
+    ($3 is true or exists(
       select 1
       from
         shift_series ss join

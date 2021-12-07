@@ -1,4 +1,4 @@
-import getPool from '../database/db.js';
+import pool from '../database/db.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { v4 as uuid } from 'uuid';
@@ -36,7 +36,7 @@ const signUp = async (req, res) => {
   if (!organisationName || !firstName || !lastName || !email || !email.includes('@') || !password.length >= 6) {
     return res.sendStatus(400);
   }
-  const client = await getPool().connect();
+  const client = await pool.connect();
   try {
     await client.query('begin');
     const organisationId = await db.organisations.insert({
@@ -88,7 +88,7 @@ const verify = async (req, res) => {
   if (!userId || !emailToken) {
     return res.sendStatus(404);
   }
-  const client = await getPool().connect();
+  const client = await pool.connect();
   try {
     await client.query('begin');
     const verified = await db.users.verify(userId, emailToken, client);
@@ -256,7 +256,7 @@ const inviteUsers = async (req, res) => {
   const isAdmin = false;
   const users = [];
   const errorUsers = [];
-  const client = await getPool().connect();
+  const client = await pool.connect();
   for (const suppliedUser of suppliedUsers) {
     const {
       firstName,
@@ -368,7 +368,7 @@ const changePasswordWithToken = async (req, res) => {
   const { userId, emailToken, password } = req.body;
   const salt = await bcrypt.genSalt(10);
   const hash = await bcrypt.hash(password, salt);
-  const client = getPool().connect();
+  const client = pool.connect();
   try {
     await client.query('begin');
     const result = await db.users.changePasswordWithToken(userId, emailToken, hash, client);
@@ -400,7 +400,7 @@ const getToken = async (req, res) => {
   const {
     email,
     password: suppliedPassword } = req.body;
-  const client = await getPool().connect();
+  const client = await pool.connect();
   try {
     await client.query('begin');
     const user = await db.users.getByEmail(email, client);
@@ -524,7 +524,7 @@ const updateImages = async (req, res) => {
   const { files, fieldName, overwrite } = req.body;
   const isUserField = ['Email', 'Phone'].includes(fieldName);
   const promises = [];
-  const client = await getPool().connect();
+  const client = await pool.connect();
   try {
     await client.query('begin');
     for (const file of files) {

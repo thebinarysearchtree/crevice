@@ -1,21 +1,17 @@
-import getPool from '../database/db.js';
-import { sql } from '../utils/data.js';
+import pool from '../database/db.js';
+import sql from '../../sql';
 
-const pool = getPool();
+const { fieldItems } = sql;
 
 const insert = async ({
   fieldId,
   name,
   itemNumber
 }, organisationId, client = pool) => {
-  const result = await client.query(sql`
-    insert into field_items(
-      field_id,
-      name,
-      item_number,
-      organisation_id)
-    values(${[fieldId, name, itemNumber, organisationId]})`);
-  return result;
+  const text = fieldItems.insert;
+  const values = [fieldId, name, itemNumber, organisationId];
+  const result = await client.query(text, values);
+  return result.rowCount;
 }
 
 const update = async ({
@@ -23,24 +19,17 @@ const update = async ({
   name,
   itemNumber
 }, organisationId, client = pool) => {
-  const result = await client.query(`
-    update field_items
-    set
-      name = ${name},
-      item_number = ${itemNumber}
-    where
-      id = ${id} and
-      organisation_id = ${organisationId}`);
-  return result;
+  const text = fieldItems.update;
+  const values = [id, name, itemNumber, organisationId];
+  const result = await client.query(text, values);
+  return result.rowCount;
 }
 
 const remove = async (itemId, organisationId, client = pool) => {
-  const result = await client.query(sql`
-    delete from field_items
-    where
-      id = ${itemId} and
-      organisation_id = ${organisationId}`);
-  return result;
+  const text = fieldItems.remove;
+  const values = [itemId, organisationId];
+  const result = await client.query(text, values);
+  return result.rowCount;
 }
 
 export default {

@@ -1,4 +1,4 @@
-import getPool from '../database/db.js';
+import pool from '../database/db.js';
 import bookingRepository from '../repositories/booking.js';
 
 const db = {
@@ -10,7 +10,7 @@ const insert = async (req, res) => {
   const bookedById = req.user.id;
   const isAdmin = req.user.isAdmin;
   const organisationId = req.user.organisationId;
-  const client = await getPool().connect();
+  const client = await pool.connect();
   try {
     await client.query('begin');
     const promises = [];
@@ -21,7 +21,7 @@ const insert = async (req, res) => {
     }
     const results = await Promise.all(promises);
     await client.query('commit');
-    const rowCount = results.filter(r => r.rowCount === 1).length;
+    const rowCount = results.reduce((a, c) => a + c);
     return res.json({ rowCount });
   }
   catch (e) {
@@ -34,9 +34,9 @@ const insert = async (req, res) => {
 }
 
 const remove = async (req, res) => {
-  const { userId, bookingId } = req.body;
-  const result = await db.bookings.remove({ userId, bookingId }, req.user.isAdmin, req.user.organisationId);
-  return res.json({ rowCount: result.rowCount });
+  const booking = req.body;
+  const rowCount = await db.bookings.remove(booking, req.user.isAdmin, req.user.organisationId);
+  return res.json({ rowCount });
 }
 
 export {

@@ -4,6 +4,6 @@ select
     plaintext
 from email_templates
 where
-    id = $1 and
-    type = $2 and
-    organisation_id = $3
+    type = $1 and
+    organisation_id = $2 and
+    is_default is true

@@ -1,4 +1,4 @@
-import getPool from '../database/db.js';
+import pool from '../database/db.js';
 import shiftSeriesRepository from '../repositories/shiftSeries.js';
 import shiftRepository from '../repositories/shift.js';
 import shiftRoleRepository from '../repositories/shiftRole.js';
@@ -15,7 +15,7 @@ const insert = async (req, res) => {
   const { series, shift, shiftRoles } = req.body;
   const userId = req.user.id;
   const organisationId = req.user.organisationId;
-  const client = await getPool().connect();
+  const client = await pool.connect();
   try {
     await client.query('begin');
     const { notes, questionGroupId } = series;
@@ -69,7 +69,7 @@ const update = async (req, res) => {
     detach 
   } = req.body;
   const organisationId = req.user.organisationId;
-  const client = await getPool().connect();
+  const client = await pool.connect();
   try {
     await client.query('begin');
     const promises = [];
@@ -140,14 +140,14 @@ const getAvailableShifts = async (req, res) => {
 const remove = async (req, res) => {
   const { shiftId, seriesId, type } = req.body;
   const organisationId = req.user.organisationId;
-  let result;
+  let rowCount;
   if (type === 'shift') {
-    result = await db.shifts.remove(shiftId, organisationId);
+    rowCount = await db.shifts.remove(shiftId, organisationId);
   }
   else {
-    result = await db.shiftSeries.remove(seriesId, organisationId);
+    rowCount = await db.shiftSeries.remove(seriesId, organisationId);
   }
-  return res.json({ rowCount: result.rowCount });
+  return res.json({ rowCount });
 }
 
 export {

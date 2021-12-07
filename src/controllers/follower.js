@@ -5,9 +5,9 @@ const db = {
 };
 
 const insert = async (req, res) => {
-  const { userId, followingId } = req.body;
-  const result = await db.followers.insert(userId, followingId, req.user.organisationId);
-  return res.json({ rowCount: result.rowCount });
+  const follower = req.body;
+  const rowCount = await db.followers.insert(follower, req.user.organisationId);
+  return res.json({ rowCount });
 }
 
 const find = async (req, res) => {
@@ -17,9 +17,9 @@ const find = async (req, res) => {
 }
 
 const remove = async (req, res) => {
-  const { userId, followingId } = req.body;
-  const result = await db.followers.remove(userId, followingId, req.user.organisationId);
-  return res.json({ rowCount: result.rowCount });
+  const follower = req.body;
+  const rowCount = await db.followers.remove(follower, req.user.organisationId);
+  return res.json({ rowCount });
 }
 
 export {

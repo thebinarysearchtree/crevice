@@ -1,23 +1,21 @@
-import getPool from '../database/db.js';
-import { sql, wrap } from '../utils/data.js';
+import pool from '../database/db.js';
+import sql from '../../sql';
 
-const pool = getPool();
+const { organisations } = sql;
 
 const insert = async ({
   name
 }, client = pool) => {
-  const result = await client.query(sql`
-    insert into organisations(name)
-    values(${name}) 
-    returning id`);
+  const text = organisations.insert;
+  const values = [name];
+  const result = await client.query(text, values);
   return result.rows[0].id;
 }
 
-const getById = async (id, client = pool) => {
-  const result = await client.query(wrap`
-    select name
-    from organisations
-    where id = ${id}`);
+const getById = async (organisationId, client = pool) => {
+  const text = organisations.getById;
+  const values = [organisationId];
+  const result = await client.query(text, values);
   return result.rows[0].result;
 }
 
@@ -25,23 +23,22 @@ const update = async ({
   name,
   logoImageId
 }, organisationId, client = pool) => {
-  await client.query(`
-    update organisations
-    set 
-      name = ${name},
-      logo_image_id = ${logoImageId}
-    where id = ${organisationId}`);
+  const text = organisations.update;
+  const values = [name, logoImageId, organisationId];
+  const result = await client.query(text, values);
+  return result.rowCount;
 }
 
-const deleteById = async (organisationId, client = pool) => {
-  await client.query(sql`
-    delete from organisations 
-    where id = ${organisationId}`);
+const remove = async (organisationId, client = pool) => {
+  const text = organisations.remove;
+  const values = [organisationId];
+  const result = await client.query(text, values);
+  return result.rowCount;
 }
 
 export default {
   insert,
   getById,
   update,
-  deleteById
+  remove
 };

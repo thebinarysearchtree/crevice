@@ -4,9 +4,9 @@ insert into bookings(
     user_id,
     booked_by,
     organisation_id)
-select $1, $2, $3, $4, $5
+select $1, $2, $3, $4, $6
 where
-    ($6 is true or exists(
+    ($5 is true or exists(
         select count(b.id) < sr.capacity
         from
             shift_roles sr left join
@@ -26,7 +26,7 @@ where
         where
             s.id = $1 and
             sr.id = $2 and
-            sr.organisation_id = $5 and
+            sr.organisation_id = $6 and
             ua.user_id = $3 and
             s.start_time >= ua.start_time and
             (ua.end_time is null or s.end_time < ua.end_time) and
@@ -49,4 +49,3 @@ where
                     sr.id = $2
             ) as o on o.start_time <= s.end_time and o.end_time >= s.start_time
         where b.user_id = $3)
-returning id

@@ -1,4 +1,4 @@
-import getPool from '../database/db.js';
+import pool from '../database/db.js';
 import userAreaRepository from '../repositories/userArea.js';
 
 const db = {
@@ -14,7 +14,7 @@ const insert = async (req, res) => {
 const insertMany = async (req, res) => {
   const userAreas = req.body;
   const promises = [];
-  const client = await getPool().connect();
+  const client = await pool.connect();
   try {
     await client.query('begin');
     for (const userArea of userAreas) {

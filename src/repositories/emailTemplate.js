@@ -1,6 +1,7 @@
-import getPool from '../database/db.js';
+import pool from '../database/db.js';
+import sql from '../../sql';
 
-const pool = getPool();
+const { emailTemplates } = sql;
 
 const insert = async ({
   type,
@@ -11,55 +12,18 @@ const insert = async ({
   plaintext,
   isDefault = false
 }, organisationId, client = pool) => {
-  const result = await client.query(`
-    insert into email_templates(
-      type,
-      name,
-      subject,
-      slate,
-      html,
-      plaintext,
-      is_default,
-      organisation_id)
-    values($1, $2, $3, $4, $5, $6, $7, $8)
-    returning id`, [
-      type, 
-      name, 
-      subject, 
-      JSON.stringify(slate), 
-      html, 
-      plaintext, 
-      isDefault, 
-      organisationId]);
-  return result.rows[0].id;
-}
-
-const getById = async (templateId, type, organisationId, client = pool) => {
-  const result = await client.query(`
-    select
-      subject,
-      html,
-      plaintext
-    from email_templates
-    where 
-      id = $1 and
-      type = $2 and
-      organisation_id = $3`, [templateId, type, organisationId]);
-  return result.rows[0];
-}
-
-const getDefaultTemplate = async (type, organisationId, client = pool) => {
-  const result = await client.query(`
-    select
-      subject,
-      html,
-      plaintext
-    from email_templates
-    where
-      type = $1 and
-      organisation_id = $2 and
-      is_default is true`, [type, organisationId]);
-  return result.rows[0];
+  const text = emailTemplates.insert;
+  const values = [
+    type, 
+    name, 
+    subject, 
+    JSON.stringify(slate), 
+    html, 
+    plaintext, 
+    isDefault, 
+    organisationId];
+  const result = await client.query(text, values);
+  return result.rowCount;
 }
 
 const update = async ({
@@ -69,24 +33,37 @@ const update = async ({
   html,
   plaintext
 }, organisationId, client = pool) => {
-  await client.query(`
-    update email_templates
-    set
-      subject = $2,
-      slate = $3,
-      html = $4,
-      plaintext = $5
-    where
-      id = $1 and
-      organisation_id = $6`, [templateId, subject, slate, html, plaintext, organisationId]);
+  const text = emailTemplates.update;
+  const values = [
+    templateId,
+    subject, 
+    JSON.stringify(slate), 
+    html, 
+    plaintext, 
+    organisationId];
+  const result = await client.query(text, values);
+  return result.rowCount;
 }
 
-const deleteById = async (templateId, organisationId, client = pool) => {
-  await client.query(`
-    delete from email_templates
-    where
-      id = $1 and
-      organisation_id = $2`, [templateId, organisationId]);
+const getById = async (templateId, type, organisationId, client = pool) => {
+  const text = emailTemplates.getById;
+  const values = [templateId, type, organisationId];
+  const result = await client.query(text, values);
+  return JSON.parse(result.rows[0].result);
+}
+
+const getDefaultTemplate = async (type, organisationId, client = pool) => {
+  const text = emailTemplates.getDefault;
+  const values = [type, organisationId];
+  const result = await client.query(text, values);
+  return JSON.parse(result.rows[0].result);
+}
+
+const remove = async (templateId, organisationId, client = pool) => {
+  const text = emailTemplates.remove;
+  const values = [templateId, organisationId];
+  const result = await client.query(text, values);
+  return result.rowCount;
 }
 
 export default {
@@ -94,5 +71,5 @@ export default {
   getById,
   getDefaultTemplate,
   update,
-  deleteById
+  remove
 };
