@@ -1,6 +1,6 @@
 import pool from '../database/db.js';
 import { makeReviver } from '../utils/data.js';
-import sql from '../../sql';
+import sql from '../../sql.js';
 
 const { users } = sql;
 
@@ -149,18 +149,10 @@ const findPotentialBookings = async ({
 
 const findByName = async (searchTerm, organisationId, client = pool) => {
   searchTerm = `%${searchTerm}%`;
-
-  const results = await client.query(wrap`
-    select
-      id,
-      concat_ws(' ', first_name, last_name) as name,
-      image_id
-    from users
-    where
-      concat_ws(' ', first_name, last_name) ilike ${searchTerm} and
-      organisation_id = ${organisationId}
-    limit 5`);
-  return results.rows[0].result;
+  const text = users.findByName;
+  const values = [searchTerm, organisationId];
+  const result = await client.query(text, values);
+  return result.rows[0].result;
 }
 
 const updateImageByPrimaryField = async ({
@@ -168,15 +160,15 @@ const updateImageByPrimaryField = async ({
   fieldName,
   fieldValue
 }, overwrite, organisationId, client = pool) => {
-  fieldName = sql`${fieldName}`;
-  const result = await client.query(sql`
-    update users u
-    set image_id = ${fileId}
-    where
-      u.organisation_id = ${organisationId} and
-      u.${fieldName} = ${fieldValue}
-      ${overwrite ? sql`` : sql` and u.image_id is null`}`);
-  return result;
+  const text = users.updateImage;
+  const values = [
+    fileId, 
+    fieldName, 
+    fieldValue, 
+    overwrite, 
+    organisationId];
+  const result = await client.query(text, values);
+  return result.rowCount;
 }
 
 const updateImageByCustomField = async ({
@@ -184,88 +176,65 @@ const updateImageByCustomField = async ({
   fieldName,
   fieldValue
 }, overwrite, organisationId, client = pool) => {
-  const result = await client.query(sql`
-    update users u
-    set image_id = ${fileId}
-    from 
-      user_fields uf,
-      fields f
-    where
-      uf.user_id = u.id and
-      uf.field_id = f.id and
-      u.organisation_id = ${organisationId} and
-      f.name = ${fieldName} and
-      uf.text_value = ${fieldValue}
-      ${overwrite ? sql`` : sql` and u.image_id is null`}`);
-  return result;
+  const text = users.updateImageByField;
+  const values = [
+    fileId, 
+    fieldName, 
+    fieldValue, 
+    overwrite, 
+    organisationId];
+  const result = await client.query(text, values);
+  return result.rowCount;
 }
 
 const resetFailedPasswordAttempts = async (userId, client = pool) => {
-  await client.query(sql`
-    update users
-    set failed_password_attempts = 0
-    where id = ${userId}`);
+  const text = users.resetAttempts;
+  const values = [userId];
+  const result = await client.query(text, values);
+  return result.rowCount;
 }
 
 const incrementFailedPasswordAttempts = async (userId, client = pool) => {
-  await client.query(sql`
-    update users
-    set 
-      failed_password_attempts = failed_password_attempts + 1,
-      is_disabled = case when 
-        (failed_password_attempts + 1) = 5 then true
-        else is_disabled end
-    where
-      id = ${userId} and
-      is_disabled is false`);
+  const text = users.incrementAttempts;
+  const values = [userId];
+  const result = await client.query(text, values);
+  return result.rowCount;
 }
 
 const disable = async (userId, client = pool) => {
-  await client.query(sql`
-    update users
-    set is_disabled = true
-    where id = ${userId}`);
+  const text = users.disable;
+  const values = [userId];
+  const result = await client.query(text, values);
+  return result.rowCount;
 }
 
 const enable = async (userId, client = pool) => {
-  await client.query(sql`
-    update users
-    set is_disabled = false
-    where id = ${userId}`);
+  const text = users.enable;
+  const values = [userId];
+  const result = await client.query(text, values);
+  return result.rowCount;
 }
 
 const verify = async (userId, emailToken, client = pool) => {
-  const result = await client.query(sql`
-    update users
-    set 
-      is_verified = true,
-      email_token = null,
-      email_token_expiry = null
-    where
-      id = ${userId} and
-      is_disabled is false and
-      is_verified is false and
-      email_token is not null and
-      email_token = ${emailToken} and
-      email_token_expiry > now()`);
+  const text = users.verify;
+  const values = [userId, emailToken];
+  const result = await client.query(text, values);
   return result.rowCount === 1;
 }
 
 const getPassword = async (userId, client = pool) => {
-  const result = await client.query(sql`
-    select password from users 
-    where id = ${userId}`);
-  return result.rows[0].password;
+  const text = users.getPassword;
+  const values = [userId];
+  const result = await client.query(text, values);
+  const parsed = JSON.parse(result.rows[0].result);
+  return parsed[0].password;
 }
 
 const remove = async (userId, organisationId, client = pool) => {
-  const result = await client.query(sql`
-    delete from users
-    where 
-      id = ${userId} and
-      organisation_id = ${organisationId} and
-      is_admin is false`);
-  return result;
+  const text = users.remove;
+  const values = [userId, organisationId];
+  const result = await client.query(text, values);
+  return result.rowCount;
 }
 
 export default {

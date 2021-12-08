@@ -1,5 +1,5 @@
 import pool from '../database/db.js';
-import sql from '../../sql';
+import sql from '../../sql.js';
 
 const { emailTemplates } = sql;
 

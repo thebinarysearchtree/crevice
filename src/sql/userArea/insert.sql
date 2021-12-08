@@ -26,4 +26,3 @@ where
         where
             id = $3 and
             organisation_id = $7)
-returning id

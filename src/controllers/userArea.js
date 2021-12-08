@@ -7,8 +7,8 @@ const db = {
 
 const insert = async (req, res) => {
   const userArea = req.body;
-  const result = await db.userAreas.insert(userArea, req.user.organisationId);
-  return res.json({ rowCount: result.rowCount });
+  const rowCount = await db.userAreas.insert(userArea, req.user.organisationId);
+  return res.json({ rowCount });
 }
 
 const insertMany = async (req, res) => {
@@ -21,9 +21,9 @@ const insertMany = async (req, res) => {
       const promise = db.userAreas.insert(userArea, req.user.organisationId, client);
       promises.push(promise);
     }
-    const results = await Promise.all(promises);
+    const rowCounts = await Promise.all(promises);
     await client.query('commit');
-    const rowCount = results.map(r => r.rowCount).filter(r => r !== 0).length;
+    const rowCount = rowCounts.reduce((a, c) => a + c);
     return res.json({ rowCount });
   }
   catch (e) {
@@ -37,8 +37,8 @@ const insertMany = async (req, res) => {
 
 const update = async (req, res) => {
   const userArea = req.body;
-  const result = await db.userAreas.update(userArea, req.user.organisationId);
-  return res.json({ rowCount: result.rowCount });
+  const rowCount = await db.userAreas.update(userArea, req.user.organisationId);
+  return res.json({ rowCount });
 }
 
 const find = async (req, res) => {
@@ -49,8 +49,8 @@ const find = async (req, res) => {
 
 const remove = async (req, res) => {
   const { userAreaId } = req.body;
-  const result = await db.userAreas.remove(userAreaId, req.user.organisationId);
-  return res.json({ rowCount: result.rowCount });
+  const rowCount = await db.userAreas.remove(userAreaId, req.user.organisationId);
+  return res.json({ rowCount });
 }
 
 export {

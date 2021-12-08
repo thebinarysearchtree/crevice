@@ -34,10 +34,10 @@ with available_query as (
         s.start_time - interval '1 minute' * r.cancel_before_minutes > now() as can_cancel,
         coalesce(bool_or(b.user_id = $1), false) as booked,
         coalesce(json_agg(json_build_object(
-        'id', b.user_id,
-        'booking_id', b.id,
-        'name', concat_ws(' ', u.first_name, u.last_name),
-        'image_id', u.image_id) order by u.last_name asc) filter (where b.id is not null), json_build_array()) as booked_users
+            'id', b.user_id,
+            'booking_id', b.id,
+            'name', concat_ws(' ', u.first_name, u.last_name),
+            'image_id', u.image_id) order by u.last_name asc) filter (where b.id is not null), json_build_array()) as booked_users
     from
         shift_series ss join
         shifts s on s.series_id = ss.id join
@@ -66,6 +66,6 @@ from
     roles_query rq on rq.shift_id = s.id join
     areas a on s.area_id = a.id join
     locations l on a.location_id = l.id join
-    available_query union booked_query as b on s.id = b.shift_id
+    (select * from available_query union select * from booked_query) as b on s.id = b.shift_id
 group by s.id, ss.id, a.name, l.time_zone, b.id
 order by s.start_time asc

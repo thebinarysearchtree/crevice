@@ -39,7 +39,7 @@ with roles_query as (
     from
         shift_series ss join
         shifts s on s.series_id = ss.id join
-        roles_query rq on sr.shift_id = s.id join
+        roles_query rq on rq.shift_id = s.id join
         areas a on s.area_id = a.id join
         locations l on a.location_id = l.id
     group by s.id, ss.id, l.time_zone

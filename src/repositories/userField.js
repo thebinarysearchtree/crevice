@@ -1,5 +1,7 @@
 import pool from '../database/db.js';
-import sql from '../../sql';
+import sql from '../../sql.js';
+
+const { userFields } = sql;
 
 const insert = async ({
   fieldId,
@@ -10,22 +12,16 @@ const insert = async ({
   if (!itemId && !textValue && !dateValue) {
     throw new Error();
   }
-  await client.query(sql`
-    insert into user_fields(
-      user_id,
-      field_id,
-      item_id,
-      text_value,
-      date_value,
-      organisation_id)
-    select ${[userId, fieldId, itemId, textValue, dateValue, organisationId]}
-    ${itemId ? sql`
-    where exists(
-      select 1 from field_items 
-      where
-        id = ${itemId} and
-        field_id = ${fieldId} and
-        organisation_id = ${organisationId})` : sql``}`);
+  const text = userFields.insert;
+  const values = [
+    userId, 
+    fieldId, 
+    itemId, 
+    textValue, 
+    dateValue, 
+    organisationId];
+  const result = await client.query(text, values);
+  return result.rowCount;
 }
 
 export default {

@@ -15,7 +15,7 @@ select
     u.id,
     concat_ws(' ', u.first_name, u.last_name) as name,
     u.image_id,
-    case when $4 is true then 0 else count(*) over() end as total_count,
+    case when $4 is false then 0 else count(*) over() end as total_count,
     json_agg(distinct r) as roles,
     json_agg(distinct a.name) as area_names,
     coalesce(s.booked, 0) as booked,

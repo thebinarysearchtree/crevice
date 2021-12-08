@@ -1,6 +1,6 @@
 import pool from '../database/db.js';
 import { makeReviver } from '../utils/data.js';
-import sql from '../../sql';
+import sql from '../../sql.js';
 
 const { fields } = sql;
 
