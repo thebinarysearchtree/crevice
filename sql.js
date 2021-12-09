@@ -13,7 +13,7 @@ const loadFiles = async () => {
   const dir = './src/sql';
   const folders = await readdir(dir);
   for (const folder of folders) {
-    const name = folder + 's';
+    const name = folder.endsWith('s') ? folder : folder + 's';
     sql[name] = {};
     const path = `${dir}/${folder}`;
     const files = await readdir(path);

@@ -10,9 +10,9 @@ const insert = async ({
 }, bookedById, isAdmin, organisationId, client = pool) => {
   const text = bookings.insert;
   const values = [
-    userId, 
     shiftId, 
     shiftRoleId, 
+    userId, 
     bookedById, 
     isAdmin, 
     organisationId];
@@ -31,7 +31,7 @@ const remove = async ({
   userId,
   bookingId
 }, isAdmin, organisationId, client = pool) => {
-  const text = bookings.insert;
+  const text = bookings.remove;
   const values = [userId, bookingId, isAdmin, organisationId];
   const result = await client.query(text, values);
   return result.rowCount;

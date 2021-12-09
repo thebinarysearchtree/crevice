@@ -5,7 +5,7 @@ set
 where
     id = $1 and
     organisation_id = $4 and
-    ($3 is null or exists(
+    (cast($3 as int) is null or exists(
         select 1 from question_groups
         where
             id = $3 and

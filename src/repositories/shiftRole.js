@@ -1,59 +1,28 @@
 import pool from '../database/db.js';
 import sql from '../../sql.js';
 
+const { shiftRoles } = sql;
+
 const insert = async ({
   seriesId,
   roleId,
   capacity
 }, organisationId, client = pool) => {
-  const result = await client.query(sql`
-    insert into shift_roles(
-      series_id,
-      role_id,
-      capacity,
-      organisation_id)
-    select ${[
-      seriesId,
-      roleId,
-      capacity,
-      organisationId]}
-    where
-      exists(
-        select 1 from shift_series
-        where
-          id = ${seriesId} and
-          organisation_id = ${organisationId}) and
-      exists(
-        select 1 from roles
-        where
-          id = ${roleId} and
-          organisation_id = ${organisationId}) and
-      not exists(
-        select 1 from shift_roles
-        where
-          series_id = ${seriesId} and
-          role_id = ${roleId})
-    returning id`);
-  return result.rows[0].id;
+  const text = shiftRoles.insert;
+  const values = [
+    seriesId,
+    roleId,
+    capacity,
+    organisationId];
+  const result = await client.query(text, values);
+  return result.rowCount;
 }
 
 const copy = async (fromSeriesId, toSeriesId, organisationId, client = pool) => {
-  const result = await client.query(sql`
-    insert into shift_roles(
-      series_id,
-      role_id,
-      capacity,
-      organisation_id)
-    select
-      ${toSeriesId} as series_id,
-      role_id,
-      capacity,
-      organisation_id
-    from shift_roles
-    where
-      series_id = ${fromSeriesId} and
-      organisation_id = ${organisationId}`);
-  return result;
+  const text = shiftRoles.copy;
+  const values = [fromSeriesId, toSeriesId, organisationId];
+  const result = await client.query(text, values);
+  return result.rowCount;
 }
 
 const update = async ({
@@ -62,14 +31,10 @@ const update = async ({
   roleId,
   capacity
 }, organisationId, client = pool) => {
-  const where = id ? sql`id = ${id}` : sql`series_id = ${seriesId} and role_id = ${roleId}`;
-  const result = await client.query(sql`
-    update shift_roles
-    set capacity = ${capacity}
-    where
-      ${where} and
-      organisation_id = ${organisationId}`);
-  return result;
+  const text = id ? shiftRoles.update : shiftRoles.updateBySeriesId;
+  const values = id ? [id, capacity, organisationId] : [seriesId, roleId, capacity, organisationId];
+  const result = await client.query(text, values);
+  return result.rowCount;
 }
 
 const remove = async ({
@@ -77,13 +42,10 @@ const remove = async ({
   seriesId,
   roleId
 }, organisationId, client = pool) => {
-  const where = id ? sql`id = ${id}` : sql`series_id = ${seriesId} and role_id = ${roleId}`;
-  const result = await client.query(sql`
-    delete from shift_roles
-    where
-      ${where} and
-      organisation_id = ${organisationId}`);
-  return result;
+  const text = id ? shiftRoles.remove : shiftRoles.removeBySeriesId;
+  const values = id ? [id, organisationId] : [seriesId, roleId, organisationId];
+  const result = await client.query(text, values);
+  return result.rowCount;
 }
 
 export default {

@@ -20,4 +20,3 @@ where
         where
             series_id = $1 and
             role_id = $2)
-returning id

@@ -30,7 +30,7 @@ where
             ua.user_id = $3 and
             s.start_time >= ua.start_time and
             (ua.end_time is null or s.end_time < ua.end_time) and
-            ($6 is true or s.start_time - interval '1 minute' * r.book_before_minutes > now()) and
+            ($5 is true or s.start_time - interval '1 minute' * r.book_before_minutes > now())) and
     not exists(
         select 1
         from

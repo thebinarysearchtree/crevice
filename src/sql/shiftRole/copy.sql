@@ -3,8 +3,8 @@ insert into shift_roles(
     role_id,
     capacity,
     organisation_id)
-select $2, $3, $4, $5
+select $2, role_id, capacity, organisation_id
 from shift_roles
 where
     series_id = $1 and
-    organisation_id = $5
+    organisation_id = $3

@@ -49,14 +49,14 @@ const getById = async (templateId, type, organisationId, client = pool) => {
   const text = emailTemplates.getById;
   const values = [templateId, type, organisationId];
   const result = await client.query(text, values);
-  return JSON.parse(result.rows[0].result);
+  return JSON.parse(result.rows[0].result)[0];
 }
 
 const getDefaultTemplate = async (type, organisationId, client = pool) => {
   const text = emailTemplates.getDefault;
   const values = [type, organisationId];
   const result = await client.query(text, values);
-  return JSON.parse(result.rows[0].result);
+  return JSON.parse(result.rows[0].result)[0];
 }
 
 const remove = async (templateId, organisationId, client = pool) => {

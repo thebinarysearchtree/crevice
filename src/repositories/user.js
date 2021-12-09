@@ -160,6 +160,7 @@ const updateImageByPrimaryField = async ({
   fieldName,
   fieldValue
 }, overwrite, organisationId, client = pool) => {
+  fieldName = fieldName.toLowerCase();
   const text = users.updateImage;
   const values = [
     fileId, 

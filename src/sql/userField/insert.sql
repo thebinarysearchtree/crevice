@@ -7,7 +7,7 @@ insert into user_fields(
     organisation_id)
 select $1, $2, $3, $4, $5, $6
 where 
-    ($3 is null or exists(
+    (cast($3 as int) is null or exists(
         select 1 from field_items 
         where
             id = $3 and

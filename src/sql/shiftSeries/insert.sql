@@ -5,7 +5,7 @@ insert into shift_series(
     question_group_id,
     organisation_id)
 select $1, $2, $3, $4, $5
-where ($4 is null or exists(
+where (cast($4 as int) is null or exists(
     select 1 from question_groups
     where
     id = $4 and
