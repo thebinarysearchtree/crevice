@@ -11,7 +11,7 @@ where
         from
             shift_roles sr left join
             bookings b on b.shift_role_id = sr.id
-        where 
+        where
             b.shift_id = $1 and
             sr.id = $2
         group by sr.id)) and
@@ -44,8 +44,8 @@ where
                     shifts s join
                     shift_series ss on s.series_id = ss.id join
                     shift_roles sr on sr.series_id = ss.id
-                where 
-                    s.id = $1 and 
+                where
+                    s.id = $1 and
                     sr.id = $2
             ) as o on o.start_time <= s.end_time and o.end_time >= s.start_time
         where b.user_id = $3)
