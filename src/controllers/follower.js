@@ -1,29 +1,32 @@
-import followerRepository from '../repositories/follower.js';
+import auth from '../middleware/authentication.js';
+import sql from '../../sql.js';
+import { add, rowCount, text, params } from '../utils/handler.js';
+import auth from '../middleware/authentication.js';
+import { owner } from '../middleware/permission.js';
 
-const db = {
-  followers: followerRepository
-};
+const middleware = [auth, owner];
 
-const insert = async (req, res) => {
-  const follower = req.body;
-  const rowCount = await db.followers.insert(follower, req.user.organisationId);
-  return res.json({ rowCount });
-}
+const routes = [
+  {
+    sql: sql.followers.insert,
+    params,
+    response: rowCount,
+    route: '/followers/insert',
+    middleware
+  },
+  {
+    sql: sql.followers.find,
+    params,
+    response: text,
+    route: '/followers/find',
+    middleware
+  },
+  {
+    sql: sql.followers.remove,
+    params,
+    response: rowCount,
+    middleware
+  }
+];
 
-const find = async (req, res) => {
-  const query = req.body;
-  const users = await db.followers.find(query, req.user.organisationId);
-  return res.send(users);
-}
-
-const remove = async (req, res) => {
-  const follower = req.body;
-  const rowCount = await db.followers.remove(follower, req.user.organisationId);
-  return res.json({ rowCount });
-}
-
-export {
-  insert,
-  find,
-  remove
-};
+add(routes);

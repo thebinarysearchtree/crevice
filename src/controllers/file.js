@@ -1,13 +1,15 @@
-import fileRepository from '../repositories/file.js';
-
-const db = {
-  files: fileRepository
-};
+import db from '../utils/db.js';
+import { add } from '../utils/handler.js';
+import auth from '../middleware/authentication.js';
+import { admin } from '../middleware/permission.js';
+import { files, photos } from '../middleware/upload.js';
 
 const uploadFiles = async (req, res) => {
   const promises = [];
   for (const file of req.files) {
-    const promise = db.files.insert(file, req.user.id, req.user.organisationId);
+    const sql = sql.files.insert;
+    const params = [...Object.values(file), req.user.id, req.user.organisationId];
+    const promise = db.empty(sql, params);
     promises.push(promise);
   }
   await Promise.all(promises);
@@ -18,7 +20,17 @@ const uploadPhotos = async (req, res) => {
   return res.json(req.files);
 }
 
-export { 
-  uploadFiles,
-  uploadPhotos
-};
+const routes = [
+  {
+    handler: uploadFiles,
+    route: '/files/uploadFiles',
+    middleware: [auth, admin, files]
+  },
+  {
+    hander: uploadPhotos,
+    route: '/files/uploadPhotos',
+    middleware: [auth, admin, photos]
+  }
+];
+
+add(routes);

@@ -1,55 +1,67 @@
-import areaRepository from '../repositories/area.js';
+import auth from '../middleware/authentication.js';
+import { admin } from '../middleware/permission.js';
+import sql from '../../sql.js';
+import { add, rowCount, text, params, userId } from '../utils/handler.js';
 
-const db = {
-  areas: areaRepository
-};
+const middleware = [auth, admin];
 
-const insert = async (req, res) => {
-  const area = req.body;
-  const rowCount = await db.areas.insert(area, req.user.organisationId);
-  return res.json({ rowCount });
-}
+const routes = [
+  {
+    sql: sql.areas.insert,
+    params,
+    response: rowCount,
+    route: '/areas/insert',
+    middleware
+  },
+  {
+    sql: sql.areas.update,
+    params,
+    response: rowCount,
+    route: '/areas/update',
+    middleware
+  },
+  {
+    sql: sql.areas.getById,
+    params,
+    response: text,
+    route: '/areas/getById',
+    middleware
+  },
+  {
+    sql: sql.areas.getWithLocation,
+    params,
+    response: text,
+    route: '/areas/getWithLocation',
+    middleware
+  },
+  {
+    sql: sql.areas.getItems,
+    params: userId,
+    response: text,
+    route: '/areas/getItems',
+    middleware: [auth]
+  },
+  {
+    sql: sql.areas.getItemsAsAdmin,
+    params,
+    response: text,
+    route: '/areas/getItemsAsAdmin',
+    middleware
+  },
+  {
+    sql: sql.areas.find,
+    params,
+    response: text,
+    route: '/areas/find',
+    middleware
+  },
+  {
+    sql: sql.areas.remove,
+    params,
+    response: rowCount,
+    route: '/areas/find',
+    middleware
+  }
+];
 
-const update = async (req, res) => {
-  const area = req.body;
-  const rowCount = await db.areas.update(area, req.user.organisationId);
-  return res.json({ rowCount });
-}
-
-const getById = async (req, res) => {
-  const { areaId } = req.body;
-  const area = await db.areas.getById(areaId, req.user.organisationId);
-  return res.send(area);
-}
-
-const getWithLocation = async (req, res) => {
-  const locations = await db.areas.getWithLocation(req.user.organisationId);
-  return res.send(locations);
-}
-
-const getSelectListItems = async (req, res) => {
-  const user = req.user;
-  const selectListItems = await db.areas.getSelectListItems(user.isAdmin, user.id, user.organisationId);
-  return res.send(selectListItems);
-}
-
-const find = async (req, res) => {
-  const areas = await db.areas.find(req.user.organisationId);
-  return res.send(areas);
-}
-
-const remove = async (req, res) => {
-  const { areaId } = req.body;
-  const rowCount = await db.areas.remove(areaId, req.user.organisationId);
-  return res.json({ rowCount });
-}
-
-export {
-  insert,
-  update,
-  getById,
-  getWithLocation,
-  getSelectListItems,
-  find,
-  remove
-};
+add(routes);

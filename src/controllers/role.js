@@ -1,48 +1,53 @@
-import roleRepository from '../repositories/role.js';
+import auth from '../middleware/authentication.js';
+import { admin } from '../middleware/permission.js';
+import sql from '../../sql.js';
+import { add, rowCount, text, params } from '../utils/handler.js';
 
-const db = {
-  roles: roleRepository
-};
+const middleware = [auth, admin];
 
-const insert = async (req, res) => {
-  const role = req.body;
-  const rowCount = await db.roles.insert(role, req.user.organisationId);
-  return res.json({ rowCount });
-}
+const routes = [
+  {
+    sql: sql.roles.insert,
+    params,
+    response: rowCount,
+    route: '/roles/insert',
+    middleware
+  },
+  {
+    sql: sql.roles.update,
+    params,
+    response: rowCount,
+    route: '/roles/update',
+    middleware
+  },
+  {
+    sql: sql.roles.getById,
+    params,
+    response: text,
+    route: '/roles/getById',
+    middleware
+  },
+  {
+    sql: sql.roles.getItems,
+    params,
+    response: text,
+    route: '/roles/getSelectListItems',
+    middleware
+  },
+  {
+    sql: sql.roles.find,
+    params,
+    response: text,
+    route: '/roles/find',
+    middleware
+  },
+  {
+    sql: sql.roles.remove,
+    params,
+    response: rowCount,
+    route: '/roles/remove',
+    middleware
+  }
+];
 
-const update = async (req, res) => {
-  const role = req.body;
-  const rowCount = await db.roles.update(role, req.user.organisationId);
-  return res.json({ rowCount });
-}
-
-const getById = async (req, res) => {
-  const { roleId } = req.body;
-  const role = await db.roles.getById(roleId, req.user.organisationId);
-  return res.send(role);
-}
-
-const getSelectListItems = async (req, res) => {
-  const selectListItems = await db.roles.getSelectListItems(req.user.organisationId);
-  return res.send(selectListItems);
-}
-
-const find = async (req, res) => {
-  const roles = await db.roles.find(req.user.organisationId);
-  return res.send(roles);
-}
-
-const remove = async (req, res) => {
-  const { roleId } = req.body;
-  const rowCount = await db.roles.remove(roleId, req.user.organisationId);
-  return res.json({ rowCount });
-}
-
-export {
-  insert,
-  update,
-  getById,
-  getSelectListItems,
-  find,
-  remove
-};
+add(routes);

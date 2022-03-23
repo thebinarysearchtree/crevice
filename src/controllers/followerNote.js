@@ -1,23 +1,26 @@
-import followerNoteRepository from '../repositories/followerNote.js';
+import auth from '../middleware/authentication.js';
+import sql from '../../sql.js';
+import { add, rowCount, params, userId } from '../utils/handler.js';
+import auth from '../middleware/authentication.js';
+import { owner } from '../middleware/permission.js';
 
-const db = {
-  followerNotes: followerNoteRepository
-};
+const middleware = [auth, owner];
 
-const insert = async (req, res) => {
-  const userId = req.user.id;
-  const notes = req.body;
-  const rowCount = await db.followerNotes.insert(notes, userId, req.user.organisationId);
-  return res.json({ rowCount });
-}
+const routes = [
+  {
+    sql: sql.followerNotes.insert,
+    params: userId,
+    response: rowCount,
+    route: '/followerNotes/insert',
+    middleware
+  },
+  {
+    sql: sql.followerNotes.remove,
+    params,
+    response: rowCount,
+    route: '/followerNotes/remove',
+    middleware
+  }
+];
 
-const remove = async (req, res) => {
-  const { noteId } = req.body;
-  const rowCount = await db.followerNotes.remove(noteId, req.user.organisationId);
-  return res.json({ rowCount });
-}
-
-export {
-  insert,
-  remove
-};
+add(routes);

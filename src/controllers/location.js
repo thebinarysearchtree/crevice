@@ -1,48 +1,53 @@
-import locationRepository from '../repositories/location.js';
+import auth from '../middleware/authentication.js';
+import { admin } from '../middleware/permission.js';
+import sql from '../../sql.js';
+import { add, rowCount, text, params } from '../utils/handler.js';
 
-const db = {
-  locations: locationRepository
-};
+const middleware = [auth, admin];
 
-const insert = async (req, res) => {
-  const location = req.body;
-  const rowCount = await db.locations.insert(location, req.user.organisationId);
-  return res.json({ rowCount});
-}
+const routes = [
+  {
+    sql: sql.locations.insert,
+    params,
+    response: rowCount,
+    route: '/locations/insert',
+    middleware
+  },
+  {
+    sql: sql.locations.update,
+    params,
+    response: rowCount,
+    route: '/locations/update',
+    middleware
+  },
+  {
+    sql: sql.locations.getById,
+    params,
+    response: text,
+    route: '/locations/getById',
+    middleware
+  },
+  {
+    sql: sql.locations.getItems,
+    params,
+    response: text,
+    route: '/locations/getSelectListItems',
+    middleware
+  },
+  {
+    sql: sql.locations.find,
+    params,
+    response: text,
+    route: '/locations/find',
+    middleware
+  },
+  {
+    sql: sql.locations.remove,
+    params,
+    response: rowCount,
+    route: '/locations/remove',
+    middleware
+  }
+];
 
-const update = async (req, res) => {
-  const location = req.body;
-  const rowCount = await db.locations.update(location, req.user.organisationId);
-  return res.json({ rowCount });
-}
-
-const getById = async (req, res) => {
-  const { locationId } = req.body;
-  const location = await db.locations.getById(locationId, req.user.organisationId);
-  return res.send(location);
-}
-
-const getSelectListItems = async (req, res) => {
-  const selectListItems = await db.locations.getSelectListItems(req.user.organisationId);
-  return res.send(selectListItems);
-}
-
-const find = async (req, res) => {
-  const locations = await db.locations.find(req.user.organisationId);
-  return res.send(locations);
-}
-
-const remove = async (req, res) => {
-  const { locationId } = req.body;
-  const rowCount = await db.locations.remove(locationId, req.user.organisationId);
-  return res.json({ rowCount });
-}
-
-export {
-  insert,
-  update,
-  getById,
-  getSelectListItems,
-  find,
-  remove
-};
+add(routes);

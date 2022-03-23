@@ -1,9 +1,11 @@
 import pool from '../database/db.js';
-import bookingRepository from '../repositories/booking.js';
+import db from '../utils/db.js';
+import sql from '../../sql.js';
+import { add, rowCount } from '../utils/handler.js';
+import auth from '../middleware/authentication.js';
+import { owner } from '../middleware/permission.js';
 
-const db = {
-  bookings: bookingRepository
-};
+const sql = sql.bookings.insert;
 
 const insert = async (req, res) => {
   const { userId, shifts } = req.body;
@@ -16,7 +18,8 @@ const insert = async (req, res) => {
     const promises = [];
     for (const shift of shifts) {
       const { shiftId, shiftRoleId } = shift;
-      const promise = await db.bookings.insert({ userId, shiftId, shiftRoleId }, bookedById, isAdmin, organisationId, client);
+      const params = [userId, shiftId, shiftRoleId, bookedById, isAdmin, organisationId];
+      const promise = db.rowCount(sql, params, client);
       promises.push(promise);
     }
     const results = await Promise.all(promises);
@@ -33,13 +36,19 @@ const insert = async (req, res) => {
   }
 }
 
-const remove = async (req, res) => {
-  const booking = req.body;
-  const rowCount = await db.bookings.remove(booking, req.user.isAdmin, req.user.organisationId);
-  return res.json({ rowCount });
-}
+const middleware = [auth, owner];
 
-export {
-  insert,
-  remove
-};
+add([
+  {
+    handler: insert,
+    route: '/bookings/insert',
+    middleware
+  },
+  {
+    sql: sql.bookings.remove,
+    params: (req) => [...Object.values(req.body), req.user.isAdmin, req.user.organisationId],
+    response: rowCount,
+    route: '/bookings/remove',
+    middleware
+  }
+]);
