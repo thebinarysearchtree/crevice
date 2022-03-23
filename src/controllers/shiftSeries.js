@@ -1,15 +1,16 @@
-import shiftSeriesRepository from '../repositories/shiftSeries.js';
+import auth from '../middleware/authentication.js';
+import { admin } from '../middleware/permission.js';
+import sql from '../../sql.js';
+import { add, rowCount, params } from '../utils/handler.js';
 
-const db = {
-  shiftSeries: shiftSeriesRepository
-};
+const routes = [
+  {
+    sql: sql.shiftSeries.remove,
+    params,
+    response: rowCount,
+    route: '/shiftSeries/remove',
+    middleware: [auth, admin]
+  }
+];
 
-const remove = async (req, res) => {
-  const { seriesId } = req.body;
-  const rowCount = await db.shiftSeries.remove(seriesId, req.user.organisationId);
-  return res.json({ rowCount });
-}
-
-export {
-  remove
-};
+add(routes);

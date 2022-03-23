@@ -1,15 +1,9 @@
 import pool from '../database/db.js';
-import shiftSeriesRepository from '../repositories/shiftSeries.js';
-import shiftRepository from '../repositories/shift.js';
-import shiftRoleRepository from '../repositories/shiftRole.js';
-import bookingRepository from '../repositories/booking.js';
-
-const db = {
-  shiftSeries: shiftSeriesRepository,
-  shifts: shiftRepository,
-  shiftRoles: shiftRoleRepository,
-  bookings: bookingRepository
-};
+import db from '../utils/db.js';
+import sql from '../../sql.js';
+import { add, rowCount, text } from '../utils/handler.js';
+import auth from '../middleware/authentication.js';
+import { admin, owner } from '../middleware/permission.js';
 
 const insert = async (req, res) => {
   const { series, shift, shiftRoles } = req.body;
@@ -20,28 +14,23 @@ const insert = async (req, res) => {
     await client.query('begin');
     const { notes, questionGroupId } = series;
     const { areaId, times, breakMinutes } = shift;
-    const seriesId = await db.shiftSeries.insert({
-      isSingle: times.length === 1,
-      notes,
-      questionGroupId
-    }, userId, organisationId, client);
+    const sql = sql.shiftSeries.insert;
+    const params = [times.length === 1, notes, questionGroupId, userId, organisationId];
+    const seriesId = await db.value(sql, params, client);
     let promises = [];
     for (const range of times) {
       const { startTime, endTime } = range;
-      const shift = {
-        areaId, 
-        startTime, 
-        endTime, 
-        breakMinutes, 
-        seriesId
-      };
-      const promise = db.shifts.insert(shift, organisationId, client);
+      const sql = sql.shifts.insert;
+      const params = [areaId, startTime, endTime, breakMinutes, seriesId, organisationId];
+      const promise = db.empty(sql, params, client);
       promises.push(promise);
     }
     await Promise.all(promises);
     promises = [];
     for (const shiftRole of shiftRoles) {
-      const promise = db.shiftRoles.insert({...shiftRole, seriesId }, organisationId, client);
+      const sql = sql.shiftRoles.insert;
+      const params = [...Object.values(shiftRole), seriesId, organisationId];
+      const promise = db.empty(sql, params, client);
       promises.push(promise);
     }
     await Promise.all(promises);
@@ -75,41 +64,41 @@ const update = async (req, res) => {
     const promises = [];
     let seriesId = initialSeries.id;
     if (detach) {
-      seriesId = await db.shiftSeries.copy(updatedSeries.id, organisationId, client);
-      await db.shiftRoles.copy(initialSeries.id, seriesId, organisationId, client);
-      await db.shifts.updateSeriesId(initialShift.id, seriesId, organisationId, client);
-      await db.bookings.transfer(initialShift.id, seriesId, organisationId, client);
+      seriesId = await db.value(sql.shiftSeries.copy, [updatedSeries.id, organisationId], client);
+      await db.empty(sql.shiftRoles.copy, [initialSeries.id, seriesId, organisationId], client);
+      await db.empty(sql.shifts.updateSeriesId, [initialShift.id, seriesId, organisationId], client);
+      await db.empty(sql.bookings.transfer, [initialShift.id, seriesId, organisationId], client);
       remove = remove.map(sr => ({...sr, id: null, seriesId }));
       update = update.map(sr => ({...sr, id: null, seriesId }));
     }
     if (initialSeries.notes !== updatedSeries.notes) {
-      const promise = db.shiftSeries.update(updatedSeries, organisationId, client);
+      const promise = db.empty(sql.shiftSeries.update, [...Object.values(updatedSeries), organisationId], client);
       promises.push(promise);
     }
     if (
       initialShift.startTime !== updatedShift.startTime || 
       initialShift.endTime !== updatedShift.endTime || 
       initialShift.breakMinutes !== updatedShift.breakMinutes) {
-        const promise = db.shifts.update({
+        const promise = db.empty(sql.shifts.update, [
           seriesId,
-          initialStartTime: initialShift.startTime,
-          initialEndTime: initialShift.endTime,
-          updatedStartTime: updatedShift.startTime,
-          updatedEndTime: updatedShift.endTime,
-          breakMinutes: updatedShift.breakMinutes
-        }, organisationId, client);
+          initialShift.startTime,
+          initialShift.endTime,
+          updatedShift.startTime,
+          updatedShift.endTime,
+          updatedShift.breakMinutes,
+          organisationId], client);
         promises.push(promise);
     }
     for (const shiftRole of remove) {
-      const promise = db.shiftRoles.remove(shiftRole, organisationId, client);
+      const promise = db.empty(sql.shiftRoles.remove, [...Object.values(shiftRole), organisationId], client);
       promises.push(promise);
     }
     for (const shiftRole of add) {
-      const promise = db.shiftRoles.insert({...shiftRole, seriesId: initialSeries.id }, organisationId, client);
+      const promise = db.empty(sql.shiftRoles.insert, [...Object.values(shiftRole), initialSeries.id, organisationId], client);
       promises.push(promise);
     }
     for (const shiftRole of update) {
-      const promise = db.shiftRoles.update(shiftRole, organisationId, client);
+      const promise = db.empty(sql.shiftRoles.update, [...Object.values(shiftRole), organisationId], client);
       promises.push(promise);
     }
     await Promise.all(promises);
@@ -125,35 +114,38 @@ const update = async (req, res) => {
   }
 }
 
-const find = async (req, res) => {
-  const query = req.body;
-  const shifts = await db.shifts.find(query, req.user.organisationId);
-  return res.send(shifts);
-}
-
-const getAvailableShifts = async (req, res) => {
-  const query = req.body;
-  const shifts = await db.shifts.getAvailableShifts(query, req.user.organisationId);
-  return res.send(shifts);
-}
-
-const remove = async (req, res) => {
-  const { shiftId, seriesId, type } = req.body;
-  const organisationId = req.user.organisationId;
-  let rowCount;
-  if (type === 'shift') {
-    rowCount = await db.shifts.remove(shiftId, organisationId);
+const routes = [
+  {
+    handler: insert,
+    route: '/shifts/insert',
+    middleware: [auth, admin]
+  },
+  {
+    handler: update,
+    route: '/shifts/update',
+    middleware: [auth, admin]
+  },
+  {
+    sql: sql.shifts.find,
+    params,
+    response: text,
+    route: '/shifts/find',
+    middleware: [auth, admin]
+  },
+  {
+    sql: sql.shifts.getAvailableShifts,
+    params,
+    response: text,
+    route: '/shifts/getAvailableShifts',
+    middleware: [auth, owner]
+  },
+  {
+    sql: sql.shifts.remove,
+    params,
+    response: rowCount,
+    route: '/shifts/remove',
+    middleware: [auth, admin]
   }
-  else {
-    rowCount = await db.shiftSeries.remove(seriesId, organisationId);
-  }
-  return res.json({ rowCount });
-}
+];
 
-export {
-  insert,
-  update,
-  find,
-  getAvailableShifts,
-  remove
-};
+add(routes);

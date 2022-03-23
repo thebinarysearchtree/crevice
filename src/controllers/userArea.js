@@ -1,15 +1,9 @@
 import pool from '../database/db.js';
-import userAreaRepository from '../repositories/userArea.js';
-
-const db = {
-  userAreas: userAreaRepository
-};
-
-const insert = async (req, res) => {
-  const userArea = req.body;
-  const rowCount = await db.userAreas.insert(userArea, req.user.organisationId);
-  return res.json({ rowCount });
-}
+import db from '../utils/db.js';
+import sql from '../../sql.js';
+import { add, rowCount, text, params } from '../utils/handler.js';
+import auth from '../middleware/authentication.js';
+import { admin } from '../middleware/permission.js';
 
 const insertMany = async (req, res) => {
   const userAreas = req.body;
@@ -18,7 +12,7 @@ const insertMany = async (req, res) => {
   try {
     await client.query('begin');
     for (const userArea of userAreas) {
-      const promise = db.userAreas.insert(userArea, req.user.organisationId, client);
+      const promise = db.rowCount(sql.userAreas.insert, [...Object.values(userArea), req.user.organisationId], client);
       promises.push(promise);
     }
     const rowCounts = await Promise.all(promises);
@@ -35,28 +29,42 @@ const insertMany = async (req, res) => {
   }
 }
 
-const update = async (req, res) => {
-  const userArea = req.body;
-  const rowCount = await db.userAreas.update(userArea, req.user.organisationId);
-  return res.json({ rowCount });
-}
+const middleware = [auth, admin];
 
-const find = async (req, res) => {
-  const { userId } = req.body;
-  const userAreas = await db.userAreas.find(userId, req.user.organisationId);
-  return res.send(userAreas);
-}
+const routes = [
+  {
+    sql: sql.userAreas.insert,
+    params,
+    response: rowCount,
+    route: '/userAreas/insert',
+    middleware
+  },
+  {
+    handler: insertMany,
+    route: '/userAreas/insertMany',
+    middleware
+  },
+  {
+    sql: sql.userAreas.update,
+    params,
+    response: rowCount,
+    route: '/userAreas/update',
+    middleware
+  },
+  {
+    sql: sql.userAreas.find,
+    params,
+    response: text,
+    route: '/userAreas/find',
+    middleware
+  },
+  {
+    sql: sql.userAreas.remove,
+    params,
+    response: rowCount,
+    route: '/userAreas/remove',
+    middleware
+  }
+];
 
-const remove = async (req, res) => {
-  const { userAreaId } = req.body;
-  const rowCount = await db.userAreas.remove(userAreaId, req.user.organisationId);
-  return res.json({ rowCount });
-}
-
-export {
-  insert,
-  insertMany,
-  update,
-  find,
-  remove
-};
+add(routes);
