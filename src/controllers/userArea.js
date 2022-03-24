@@ -1,7 +1,7 @@
 import pool from '../database/db.js';
 import db from '../utils/db.js';
 import sql from '../../sql.js';
-import { add, rowCount, text, params } from '../utils/handler.js';
+import { add, params } from '../utils/handler.js';
 import auth from '../middleware/authentication.js';
 import { admin } from '../middleware/permission.js';
 
@@ -35,7 +35,6 @@ const routes = [
   {
     sql: sql.userAreas.insert,
     params,
-    response: rowCount,
     route: '/userAreas/insert',
     middleware
   },
@@ -47,21 +46,19 @@ const routes = [
   {
     sql: sql.userAreas.update,
     params,
-    response: rowCount,
     route: '/userAreas/update',
     middleware
   },
   {
     sql: sql.userAreas.find,
     params,
-    response: text,
     route: '/userAreas/find',
-    middleware
+    middleware,
+    wrap
   },
   {
     sql: sql.userAreas.remove,
     params,
-    response: rowCount,
     route: '/userAreas/remove',
     middleware
   }

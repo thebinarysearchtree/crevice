@@ -5,46 +5,45 @@ import { add, rowCount, text, params } from '../utils/handler.js';
 
 const middleware = [auth, admin];
 
+const wrap = true;
+
 const routes = [
   {
     sql: sql.roles.insert,
     params,
-    response: rowCount,
     route: '/roles/insert',
     middleware
   },
   {
     sql: sql.roles.update,
     params,
-    response: rowCount,
     route: '/roles/update',
     middleware
   },
   {
     sql: sql.roles.getById,
     params,
-    response: text,
     route: '/roles/getById',
-    middleware
+    middleware,
+    wrap
   },
   {
     sql: sql.roles.getItems,
     params,
-    response: text,
     route: '/roles/getSelectListItems',
-    middleware
+    middleware,
+    wrap
   },
   {
     sql: sql.roles.find,
     params,
-    response: text,
     route: '/roles/find',
-    middleware
+    middleware,
+    wrap
   },
   {
     sql: sql.roles.remove,
     params,
-    response: rowCount,
     route: '/roles/remove',
     middleware
   }

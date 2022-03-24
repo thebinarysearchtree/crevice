@@ -1,7 +1,7 @@
 import pool from '../database/db.js';
 import db from '../utils/db.js';
 import sql from '../../sql.js';
-import { add, rowCount } from '../utils/handler.js';
+import { add } from '../utils/handler.js';
 import auth from '../middleware/authentication.js';
 import { owner } from '../middleware/permission.js';
 
@@ -47,7 +47,6 @@ add([
   {
     sql: sql.bookings.remove,
     params: (req) => [...Object.values(req.body), req.user.isAdmin, req.user.organisationId],
-    response: rowCount,
     route: '/bookings/remove',
     middleware
   }

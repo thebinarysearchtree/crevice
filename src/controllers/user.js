@@ -3,28 +3,16 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { v4 as uuid } from 'uuid';
 import config from '../../config.js';
-import userRepository from '../repositories/user.js';
-import organisationRepository from '../repositories/organisation.js';
-import emailTemplateRepository from '../repositories/emailTemplate.js';
-import userAreaRepository from '../repositories/userArea.js';
-import userFieldRepository from '../repositories/userField.js';
-import fileRepository from '../repositories/file.js';
-import fieldRepository from '../repositories/field.js';
 import mailer from '../services/emailTemplate.js';
 import populate from '../database/populate.js';
 import parseCSV from 'csv-parse';
 import { readFile } from 'fs/promises';
 import path from 'path';
-
-const db = {
-  users: userRepository,
-  organisations: organisationRepository,
-  emailTemplates: emailTemplateRepository,
-  userAreas: userAreaRepository,
-  userFields: userFieldRepository,
-  files: fileRepository,
-  fields: fieldRepository
-};
+import db from '../utils/db.js';
+import sql from '../../sql.js';
+import { add, params } from '../utils/handler.js';
+import auth from '../middleware/authentication.js';
+import { admin } from '../middleware/permission.js';
 
 const signUp = async (req, res) => {
   const {
@@ -39,9 +27,7 @@ const signUp = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('begin');
-    const organisationId = await db.organisations.insert({
-      name: organisationName
-    }, client);
+    const organisationId = await db.value(sql.organisations.insert, [organisationName], client);
     await populate(organisationId, client);
     const isAdmin = true;
     const salt = await bcrypt.genSalt(10);
@@ -59,7 +45,7 @@ const signUp = async (req, res) => {
       isAdmin
     };
 
-    const userId = await db.users.insert(user, organisationId, client);
+    const userId = await db.value(sql.users.insert, [...Object.values(user), organisationId], client);
     await client.query('commit');
 
     const url = `https://${config.host}/invite/${userId}/${emailToken}`;
@@ -91,9 +77,9 @@ const verify = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('begin');
-    const verified = await db.users.verify(userId, emailToken, client);
+    const verified = await db.value(sql.users.verify, [userId, emailToken], client);
     if (!verified) {
-      await db.users.incrementFailedPasswordAttempts(userId, client);
+      await db.empty(sql.users.incrementAttempts, [userId], client);
       await client.query('commit');
       return res.sendStatus(401);
     }
@@ -128,7 +114,7 @@ const parse = (content) => {
 }
 
 const transformCsv = async (fileInfo, userAreas, organisationId) => {
-  const file = await db.files.getById(fileInfo.fileId, organisationId);
+  const file = await db.first(sql.files.getById, [fileInfo.fileId, organisationId]);
   const content = await readFile(`${config.upload.filesDir}/${file.filename}`);
   let records;
   try {
@@ -145,7 +131,7 @@ const transformCsv = async (fileInfo, userAreas, organisationId) => {
     }
   }
   const optionalFieldNames = ['Phone', 'Pager'];
-  const customFields = await db.fields.getCsvFields(organisationId);
+  const customFields = await db.rows(sql.fields.getCsvFields, [organisationId]);
   const customFieldNames = customFields.map(f => f.name);
   const allFields = [...requiredFieldNames, ...optionalFieldNames, ...customFieldNames];
   for (const column of header) {
@@ -293,14 +279,18 @@ const inviteUsers = async (req, res) => {
     };
     try {
       await client.query('begin');
-      const userId = await db.users.insert(user, organisationId, client);
+      const userId = await db.value(sql.users.insert, [...Object.values(user), organisationId], client);
       const promises = [];
       for (const userArea of userAreas) {
-        const promise = db.userAreas.insert({ ...userArea, userId }, organisationId, client);
+        const promise = db.empty(sql.userAreas.insert, [...Object.values(userArea), userId, organisationId], client);
         promises.push(promise);
       }
       for (const userField of userFields) {
-        const promise = db.userFields.insert(userField, userId, organisationId, client);
+        const { itemId, textValue, dateValue } = userField;
+        if (!itemId && !textValue && !dateValue) {
+          throw new Error();
+        }
+        const promise = db.empty(sql.userFields.insert, [...Object.values(userField), userId, organisationId], client);
         promises.push(promise);
       }
       await Promise.all(promises);
@@ -337,7 +327,7 @@ const inviteUsers = async (req, res) => {
 
 const resendInvitation = async (req, res) => {
   const { userId, emailTemplateId } = req.body;
-  const user = await db.users.getById(userId, req.user.organisationId);
+  const user = await db.first(sql.users.getById, [userId, req.user.organisationId]);
   if (!user || user.isDisabled) {
     return res.sendStatus(404);
   }
@@ -353,7 +343,7 @@ const resendInvitation = async (req, res) => {
 
 const lostPassword = async (req, res) => {
   const { email, organisationId } = req.body;
-  const { userId, firstName } = await db.users.setEmailToken(email, uuid());
+  const { userId, firstName } = await db.first(sql.users.setEmailToken, [email, uuid()]);
   const url = `https://${config.host}/lostpassword/${userId}/${emailToken}`;
   const emailUser = {
     email,
@@ -371,9 +361,9 @@ const changePasswordWithToken = async (req, res) => {
   const client = pool.connect();
   try {
     await client.query('begin');
-    const result = await db.users.changePasswordWithToken(userId, emailToken, hash, client);
-    if (!result) {
-      await db.users.incrementFailedPasswordAttempts(userId, client);
+    const rowCount = await db.rowCount(sql.users.changePasswordWithToken, [userId, emailToken, hash], client);
+    if (rowCount === 0) {
+      await db.empty(sql.users.incrementAttempts, [userId], client);
       await client.query('commit');
       return res.sendStatus(401);
     }
@@ -387,13 +377,6 @@ const changePasswordWithToken = async (req, res) => {
   finally {
     client.release();
   }
-  
-}
-
-const checkEmailExists = async (req, res) => {
-  const { email } = req.body;
-  const exists = await db.users.checkEmailExists(email);
-  return res.json({ exists });
 }
 
 const getToken = async (req, res) => {
@@ -403,7 +386,7 @@ const getToken = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('begin');
-    const user = await db.users.getByEmail(email, client);
+    const user = await db.first(sql.users.getByEmail, [email], client);
     if (!user) {
       await client.query('commit');
       return res.sendStatus(404);
@@ -412,7 +395,7 @@ const getToken = async (req, res) => {
     const result = await bcrypt.compare(suppliedPassword, storedPassword);
     if (result) {
       if (user.failedPasswordAttempts !== 0) {
-        await db.users.resetFailedPasswordAttempts(user.id, client);
+        await db.empty(sql.users.resetAttempts, [user.id], client);
         await client.query('commit');
       }
       const { token, expiry } = createToken(tokenData);
@@ -425,7 +408,7 @@ const getToken = async (req, res) => {
         isAdmin: user.isAdmin });
     }
     else {
-      await db.users.incrementFailedPasswordAttempts(user.id, client);
+      await db.empty(sql.users.incrementAttempts, [user.id], client);
       await client.query('commit');
     }
     return res.sendStatus(401);
@@ -443,7 +426,7 @@ const refreshToken = async (req, res) => {
   const expiredToken = req.body.token;
   try {
     const data = jwt.verify(expiredToken, config.key, { ignoreExpiration: true });
-    const user = await db.users.getByEmail(data.email);
+    const user = await db.first(sql.users.getByEmail, [data.email]);
     if (!user) {
       return res.sendStatus(404);
     }
@@ -473,13 +456,13 @@ const createToken = (tokenData) => {
 
 const changePassword = async (req, res) => {
   const { existingPassword: suppliedPassword, newPassword } = req.body;
-  const storedPassword = await db.users.getPassword(req.user.id);
+  const storedPassword = await db.value(sql.users.getPassword, [req.user.id]);
   const result = await bcrypt.compare(suppliedPassword, storedPassword);
   if (result) {
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash(newPassword, salt);
     const refreshToken = uuid();
-    await db.users.changePassword(hash, refreshToken, user.id);
+    await db.empty(sql.users.changePassword, [hash, refreshToken, user.id]);
     req.user.refreshToken = refreshToken;
     const token = createToken(req.user);
 
@@ -489,29 +472,35 @@ const changePassword = async (req, res) => {
 }
 
 const find = async (req, res) => {
-  const query = req.body;
+  const {
+    searchTerm,
+    roleId,
+    areaId,
+    page,
+    count
+  } = req.body;
+  if (searchTerm) {
+    searchTerm = `%${searchTerm}%`;
+  }
+  const limit = 10;
+  const offset = limit * page;
+  const getCount = page === 0 || count === null;
   const user = req.user;
+  const isAdmin = user.isAdmin;
+  const organisationId = user.organisationId;
   const areaIds = user.isAdmin ? [] : user.areas.filter(a => a.isAdmin).map(a => a.id);
-  const result = await db.users.find(query, user.isAdmin, areaIds, user.organisationId);
+  const params = [
+    searchTerm, 
+    roleId, 
+    areaId, 
+    getCount,
+    isAdmin,
+    areaIds,
+    limit, 
+    offset, 
+    organisationId];
+  const result = await db.rows(sql.users.find, params);
   return res.send(result);
-}
-
-const findPotentialBookings = async (req, res) => {
-  const query = req.body;
-  const result = await db.users.findPotentialBookings(query, req.user.organisationId);
-  return res.send(result);
-}
-
-const findByName = async (req, res) => {
-  const { searchTerm } = req.body;
-  const result = await db.users.findByName(searchTerm, req.user.organisationId);
-  return res.send(result);
-}
-
-const getUserDetails = async (req, res) => {
-  const { userId } = req.body;
-  const userDetails = await db.users.getUserDetails(userId, req.user.organisationId);
-  return res.send(userDetails);
 }
 
 const changeImage = async (req, res) => {
@@ -530,20 +519,13 @@ const updateImages = async (req, res) => {
     for (const file of files) {
       const { fileId, originalName } = file;
       const fieldValue = path.parse(originalName).name;
+      const params = [fileId, fieldName.toLowerCase(), fieldValue, overwrite, req.user.organisationId];
       let promise;
       if (isUserField) {
-        promise = db.users.updateImageByPrimaryField({
-          fileId,
-          fieldName,
-          fieldValue
-        }, overwrite, req.user.organisationId, client);
+        promise = db.result(sql.users.updateImage, params, client);
       }
       else {
-        promise = db.users.updateImageByCustomField({
-          fileId,
-          fieldName,
-          fieldValue
-        }, overwrite, req.user.organisationId, client);
+        promise = db.result(sql.users.updateImageByField, params, client);
       }
       promises.push(promise);
     }
@@ -567,28 +549,98 @@ const updateImages = async (req, res) => {
   }
 }
 
-const remove = async (req, res) => {
-  const { userId } = req.body;
-  const result = await db.users.remove(userId, req.user.organisationId);
-  return res.json({ deletedCount: result.rowCount });
+const middleware = [auth, admin];
+
+const searchTerm = (req) => {
+  const query = req.body;
+  query.searchTerm = `%${query.searchTerm}%`;
+  return [...Object.values(query), req.user.organisationId];
 }
 
-export {
-  signUp,
-  verify,
-  inviteUsers,
-  resendInvitation,
-  lostPassword,
-  changePasswordWithToken,
-  checkEmailExists,
-  getToken,
-  refreshToken,
-  changePassword,
-  find,
-  findPotentialBookings,
-  findByName,
-  getUserDetails,
-  changeImage,
-  updateImages,
-  remove
-};
+const wrap = true;
+
+const routes = [
+  {
+    handler: signUp,
+    route: '/users/signUp'
+  },
+  {
+    handler: verify,
+    route: '/users/verify'
+  },
+  {
+    handler: inviteUsers,
+    route: '/users/invite',
+    middleware
+  },
+  {
+    handler: resendInvitation,
+    route: '/users/resentInvitation',
+    middleware
+  },
+  {
+    handler: lostPassword,
+    route: '/users/lostPassword'
+  },
+  {
+    handler: changePasswordWithToken,
+    route: '/users/changePasswordWithToken'
+  },
+  {
+    handler: getToken,
+    route: '/users/getToken'
+  },
+  {
+    handler: refreshToken,
+    route: '/users/refreshToken'
+  },
+  {
+    handler: changePassword,
+    route: '/users/changePassword',
+    middleware: auth
+  },
+  {
+    handler: find,
+    route: '/users/find',
+    middleware: auth
+  },
+  {
+    handler: changeImage,
+    route: '/users/changeImage',
+    middleware
+  },
+  {
+    handler: updateImages,
+    route: '/users/updateImages',
+    middleware
+  },
+  {
+    sql: sql.users.findPotentialBookings,
+    params: searchTerm,
+    route: '/users/findPotentialBookings',
+    middleware: auth,
+    wrap
+  },
+  {
+    sql: sql.users.findByName,
+    params: searchTerm,
+    route: '/users/findByName',
+    middleware: auth,
+    wrap
+  },
+  {
+    sql: sql.users.getUserDetails,
+    params,
+    route: '/users/getUserDetails',
+    middleware,
+    wrap
+  },
+  {
+    sql: sql.users.remove,
+    params,
+    route: '/users/remove',
+    middleware
+  }
+];
+
+add(routes);

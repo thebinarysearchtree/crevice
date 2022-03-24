@@ -3,7 +3,7 @@ import db from '../utils/db.js';
 import auth from '../middleware/authentication.js';
 import { admin } from '../middleware/permission.js';
 import sql from '../../sql.js';
-import { add, rowCount, text, params } from '../utils/handler.js';
+import { add, params } from '../utils/handler.js';
 
 const getParams = (field, organisationId) => [...Object.values(field), organisationId];
 
@@ -112,6 +112,8 @@ const update = async (req, res) => {
 
 const middleware = [auth, admin];
 
+const wrap = true;
+
 const routes = [
   {
     handler: insert,
@@ -126,56 +128,54 @@ const routes = [
   {
     sql: sql.fields.moveUp,
     params,
-    response: rowCount,
     route: '/fields/moveUp',
     middleware
   },
   {
     sql: sql.fields.getById,
     params,
-    response: text,
     route: '/fields/getById',
-    middleware
+    middleware,
+    wrap
   },
   {
     sql: sql.fields.getByType,
     params: (req) => [['Short', 'Standard', 'Number'], req.user.organisationId],
-    response: text,
     route: '/fields/getFilenameFields',
-    middleware
+    middleware,
+    wrap
   },
   {
     sql: sql.fields.getByType,
     params: (req) => [['Short', 'Standard', 'Number', 'Select'], req.user.organisationId],
-    response: text,
     route: '/fields/getCsvFields',
-    middleware
+    middleware,
+    wrap
   },
   {
     sql: sql.fields.getAllFields,
     params,
-    response: text,
     route: '/fields/getAllFields',
-    middleware
+    middleware,
+    wrap
   },
   {
     sql: sql.fields.getItems,
     params,
-    response: text,
     route: '/fields/getSelectListItems',
-    middleware
+    middleware,
+    wrap
   },
   {
     sql: sql.fields.find,
     params,
-    response: text,
     route: '/fields/find',
-    middleware
+    middleware,
+    wrap
   },
   {
     sql: sql.fields.remove,
     params,
-    response: rowCount,
     route: '/fields/remove',
     middleware
   }

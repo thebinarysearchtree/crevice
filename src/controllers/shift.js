@@ -1,7 +1,7 @@
 import pool from '../database/db.js';
 import db from '../utils/db.js';
 import sql from '../../sql.js';
-import { add, rowCount, text } from '../utils/handler.js';
+import { add } from '../utils/handler.js';
 import auth from '../middleware/authentication.js';
 import { admin, owner } from '../middleware/permission.js';
 
@@ -128,21 +128,20 @@ const routes = [
   {
     sql: sql.shifts.find,
     params,
-    response: text,
     route: '/shifts/find',
-    middleware: [auth, admin]
+    middleware: [auth, admin],
+    wrap: true
   },
   {
     sql: sql.shifts.getAvailableShifts,
     params,
-    response: text,
     route: '/shifts/getAvailableShifts',
-    middleware: [auth, owner]
+    middleware: [auth, owner],
+    wrap: true
   },
   {
     sql: sql.shifts.remove,
     params,
-    response: rowCount,
     route: '/shifts/remove',
     middleware: [auth, admin]
   }

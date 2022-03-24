@@ -1,6 +1,6 @@
 import auth from '../middleware/authentication.js';
 import sql from '../../sql.js';
-import { add, rowCount, text, params } from '../utils/handler.js';
+import { add, params } from '../utils/handler.js';
 import auth from '../middleware/authentication.js';
 import { owner } from '../middleware/permission.js';
 
@@ -10,21 +10,19 @@ const routes = [
   {
     sql: sql.followers.insert,
     params,
-    response: rowCount,
     route: '/followers/insert',
     middleware
   },
   {
     sql: sql.followers.find,
     params,
-    response: text,
     route: '/followers/find',
-    middleware
+    middleware,
+    wrap: true
   },
   {
     sql: sql.followers.remove,
     params,
-    response: rowCount,
     middleware
   }
 ];
