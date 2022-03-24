@@ -1,9 +1,6 @@
 import mailer from './email.js';
-import emailTemplateRepository from '../repositories/emailTemplate.js';
-
-const db = {
-  emailTemplates: emailTemplateRepository
-};
+import db from '../utils/db.js';
+import sql from '../../sql.js';
 
 const replaceFields = (placeholders, template) => {
   let { plaintext, html } = template;
@@ -21,10 +18,10 @@ const replaceFields = (placeholders, template) => {
 const send = async (type, users, templateId, organisationId) => {
   let template;
   if (templateId) {
-    template = await db.emailTemplates.getById(templateId, type, organisationId);
+    template = await db.first(sql.emailTemplates.getById, [templateId, type, organisationId]);
   }
   else {
-    template = await db.emailTemplates.getDefaultTemplate(type, organisationId);
+    template = await db.first(sql.emailTemplates.getDefault, [type, organisationId]);
   }
   const promises = [];
   for (const user of users) {

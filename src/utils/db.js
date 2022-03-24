@@ -20,6 +20,11 @@ const rows = async (sql, params, client = pool) => {
   return JSON.parse(result.rows[0].result, reviver);
 }
 
+const text = async (sql, params, client = pool) => {
+  const result = await client.query(wrap(sql), params);
+  return result.rows[0].result;
+}
+
 const first = async (sql, params, client = pool) => {
   const result = await client.query(wrap(sql), params);
   const parsed = JSON.parse(result.rows[0].result, reviver);
@@ -47,6 +52,7 @@ const empty = async (sql, params, client = pool) => {
 export default {
   rowCount,
   rows,
+  text,
   first,
   value,
   result,

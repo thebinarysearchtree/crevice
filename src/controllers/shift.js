@@ -114,6 +114,19 @@ const update = async (req, res) => {
   }
 }
 
+const find = async (req, res) => {
+  const organisationId = req.user.organisationId;
+  let { areaId, startTime, endTime } = req.body;
+  if (!areaId) {
+    const { id, timeZone } = await db.first(sql.shifts.getFirstArea, [organisationId]);
+    areaId = id;
+    startTime += timeZone;
+    endTime += timeZone;
+  }
+  const shifts = await db.text(sql.shifts.find, [areaId, startTime, endTime, organisationId]);
+  return res.send(shifts);
+}
+
 const middleware = [auth, admin];
 
 const wrap = true;
@@ -131,11 +144,9 @@ const routes = [
     middleware
   },
   {
-    sql: shifts.find,
-    params,
+    handler: find,
     route: '/shifts/find',
-    middleware,
-    wrap
+    middleware
   },
   {
     sql: shifts.getAvailableShifts,

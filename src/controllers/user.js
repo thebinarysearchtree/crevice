@@ -343,7 +343,7 @@ const resendInvitation = async (req, res) => {
 
 const lostPassword = async (req, res) => {
   const { email, organisationId } = req.body;
-  const { userId, firstName } = await db.first(sql.users.setEmailToken, [email, uuid()]);
+  const { id: userId, firstName } = await db.first(sql.users.setEmailToken, [email, uuid()]);
   const url = `https://${config.host}/lostpassword/${userId}/${emailToken}`;
   const emailUser = {
     email,
