@@ -56,13 +56,13 @@ const update = async (req, res) => {
   try {
     await client.query('begin');
     let totalRowCount = 0;
-    const sql = sql.fields.getById;
+    const query = sql.fields.getById;
     const params = [fieldId, organisationId];
-    const field = await db.first(sql, params, client);
+    const field = await db.first(query, params, client);
     if (name !== existingName) {
-      const sql = sql.fields.update;
+      const query = sql.fields.update;
       const params = [fieldId, name, organisationId];
-      const rowCount = await db.rowCount(sql, params, client);
+      const rowCount = await db.rowCount(query, params, client);
       totalRowCount += rowCount;
     }
     if (field.fieldType === 'Select') {
@@ -71,25 +71,25 @@ const update = async (req, res) => {
       for (const item of itemsToDelete) {
         const { id } = item;
         if (existingItemIds.includes(id)) {
-          const sql = sql.fieldItems.remove;
+          const query = sql.fieldItems.remove;
           const params = [id, organisationId];
-          const promise = db.rowCount(sql, params, client);
+          const promise = db.rowCount(query, params, client);
           promises.push(promise);
         }
       }
       for (const item of itemsToAdd) {
         const { id, name } = item;
-        const sql = sql.fieldItems.insert;
+        const query = sql.fieldItems.insert;
         const params = [id, name, fieldId, organisationId];
-        const promise = db.rowCount(sql, params, client);
+        const promise = db.rowCount(query, params, client);
         promises.push(promise);
       }
       for (const item of itemsToUpdate) {
         const { id, name } = item;
         if (existingItemIds.includes(id)) {
-          const sql = sql.fieldItems.update;
+          const query = sql.fieldItems.update;
           const params = [id, name, organisationId];
-          const promise = db.rowCount(sql, params, client);
+          const promise = db.rowCount(query, params, client);
           promises.push(promise);
         }
       }

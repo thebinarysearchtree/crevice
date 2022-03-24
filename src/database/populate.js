@@ -1,8 +1,5 @@
-import emailTemplateRepository from '../repositories/emailTemplate.js';
-
-const db = {
-  emailTemplates: emailTemplateRepository
-};
+import db from '../utils/db.js';
+import sql from '../../sql.js';
 
 const defaultTemplates = [
   {
@@ -35,18 +32,21 @@ const populate = async (organisationId, client) => {
       subject,
       plaintext
     } = defaultTemplate;
-    await db.emailTemplates.insert({
+    const query = sql.emailTemplates.insert;
+    const params = [
       type,
-      name: 'Default Template',
+      'Default Template',
       subject,
-      slate: [{
+      JSON.stringify([{
         type: 'paragraph',
         children: [{ text: plaintext }]
-      }],
-      html: `<p>${plaintext}</p>`,
+      }]),
+      `<p>${plaintext}</p>`,
       plaintext,
-      isDefault: true
-    }, organisationId, client);
+      true,
+      organisationId
+    ];
+    await db.empty(query, params, client);
   }
 }
 

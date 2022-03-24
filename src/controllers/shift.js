@@ -14,23 +14,23 @@ const insert = async (req, res) => {
     await client.query('begin');
     const { notes, questionGroupId } = series;
     const { areaId, times, breakMinutes } = shift;
-    const sql = sql.shiftSeries.insert;
+    const query = sql.shiftSeries.insert;
     const params = [times.length === 1, notes, questionGroupId, userId, organisationId];
-    const seriesId = await db.value(sql, params, client);
+    const seriesId = await db.value(query, params, client);
     let promises = [];
     for (const range of times) {
       const { startTime, endTime } = range;
-      const sql = sql.shifts.insert;
+      const query = sql.shifts.insert;
       const params = [areaId, startTime, endTime, breakMinutes, seriesId, organisationId];
-      const promise = db.empty(sql, params, client);
+      const promise = db.empty(query, params, client);
       promises.push(promise);
     }
     await Promise.all(promises);
     promises = [];
     for (const shiftRole of shiftRoles) {
-      const sql = sql.shiftRoles.insert;
+      const query = sql.shiftRoles.insert;
       const params = [...Object.values(shiftRole), seriesId, organisationId];
-      const promise = db.empty(sql, params, client);
+      const promise = db.empty(query, params, client);
       promises.push(promise);
     }
     await Promise.all(promises);
@@ -90,7 +90,10 @@ const update = async (req, res) => {
         promises.push(promise);
     }
     for (const shiftRole of remove) {
-      const promise = db.empty(sql.shiftRoles.remove, [...Object.values(shiftRole), organisationId], client);
+      const { id, seriesId, roleId } = shiftRole;
+      const query = id ? sql.shiftRoles.remove : sql.shiftRoles.removeBySeriesId;
+      const params = id ? [id, organisationId] : [seriesId, roleId, organisationId];
+      const promise = db.empty(query, params, client);
       promises.push(promise);
     }
     for (const shiftRole of add) {
@@ -98,7 +101,10 @@ const update = async (req, res) => {
       promises.push(promise);
     }
     for (const shiftRole of update) {
-      const promise = db.empty(sql.shiftRoles.update, [...Object.values(shiftRole), organisationId], client);
+      const { id, seriesId, roleId, capacity } = shiftRole;
+      const query = id ? sql.shiftRoles.update : sql.shiftRoles.updateBySeriesId;
+      const params = id ? [id, capacity, organisationId] : [seriesId, roleId, capacity, organisationId];
+      const promise = db.empty(query, params, client);
       promises.push(promise);
     }
     await Promise.all(promises);
