@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import client from '../database/db.js';
 
 const wrapSql = (sql) => {
   return `
@@ -40,5 +41,6 @@ export {
   rowCount,
   text,
   params,
-  userId
+  userId,
+  router
 };

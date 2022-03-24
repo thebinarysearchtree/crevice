@@ -1,28 +1,29 @@
-import auth from '../middleware/authentication.js';
 import sql from '../../sql.js';
 import { add, params } from '../utils/handler.js';
 import auth from '../middleware/authentication.js';
 import { owner } from '../middleware/permission.js';
 
 const middleware = [auth, owner];
+const followers = sql.followers;
 
 const routes = [
   {
-    sql: sql.followers.insert,
+    sql: followers.insert,
     params,
     route: '/followers/insert',
     middleware
   },
   {
-    sql: sql.followers.find,
+    sql: followers.find,
     params,
     route: '/followers/find',
     middleware,
     wrap: true
   },
   {
-    sql: sql.followers.remove,
+    sql: followers.remove,
     params,
+    route: '/followers/remove',
     middleware
   }
 ];

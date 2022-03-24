@@ -1,18 +1,19 @@
 import config from './config.js';
 import express from 'express';
 import logger from 'morgan';
-import users from './src/routes/user.js';
-import roles from './src/routes/role.js';
-import locations from './src/routes/location.js';
-import areas from './src/routes/area.js';
-import files from './src/routes/file.js';
-import fields from './src/routes/field.js';
-import userAreas from './src/routes/userArea.js';
-import shifts from './src/routes/shift.js';
-import bookings from './src/routes/booking.js';
-import shiftSeries from './src/routes/shiftSeries.js';
-import followers from './src/routes/follower.js';
-import followerNotes from './src/routes/followerNote.js';
+import './src/controllers/user.js';
+import './src/controllers/role.js';
+import './src/controllers/location.js';
+import './src/controllers/area.js';
+import './src/controllers/file.js';
+import './src/controllers/field.js';
+import './src/controllers/userArea.js';
+import './src/controllers/shift.js';
+import './src/controllers/booking.js';
+import './src/controllers/shiftSeries.js';
+import './src/controllers/follower.js';
+import './src/controllers/followerNote.js';
+import { router } from './src/utils/handler.js';
 
 const app = express();
 
@@ -20,18 +21,7 @@ app.use(logger('dev'));
 app.use(express.json());
 app.use('/photos', express.static('photos'));
 
-app.use('/users', users);
-app.use('/roles', roles);
-app.use('/locations', locations);
-app.use('/areas', areas);
-app.use('/files', files);
-app.use('/fields', fields);
-app.use('/userAreas', userAreas);
-app.use('/shifts', shifts);
-app.use('/bookings', bookings);
-app.use('/shiftSeries', shiftSeries);
-app.use('/followers', followers);
-app.use('/followerNotes', followerNotes);
+app.use('/', router);
 
 const server = app.listen(config.port);
 

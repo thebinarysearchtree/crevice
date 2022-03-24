@@ -5,8 +5,6 @@ import { add } from '../utils/handler.js';
 import auth from '../middleware/authentication.js';
 import { owner } from '../middleware/permission.js';
 
-const sql = sql.bookings.insert;
-
 const insert = async (req, res) => {
   const { userId, shifts } = req.body;
   const bookedById = req.user.id;
@@ -19,7 +17,7 @@ const insert = async (req, res) => {
     for (const shift of shifts) {
       const { shiftId, shiftRoleId } = shift;
       const params = [userId, shiftId, shiftRoleId, bookedById, isAdmin, organisationId];
-      const promise = db.rowCount(sql, params, client);
+      const promise = db.rowCount(sql.bookings.insert, params, client);
       promises.push(promise);
     }
     const results = await Promise.all(promises);

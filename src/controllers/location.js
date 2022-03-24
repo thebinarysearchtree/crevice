@@ -6,43 +6,44 @@ import { add, params } from '../utils/handler.js';
 const middleware = [auth, admin];
 
 const wrap = true;
+const locations = sql.locations;
 
 const routes = [
   {
-    sql: sql.locations.insert,
+    sql: locations.insert,
     params,
     route: '/locations/insert',
     middleware
   },
   {
-    sql: sql.locations.update,
+    sql: locations.update,
     params,
     route: '/locations/update',
     middleware
   },
   {
-    sql: sql.locations.getById,
+    sql: locations.getById,
     params,
     route: '/locations/getById',
     middleware,
     wrap
   },
   {
-    sql: sql.locations.getItems,
+    sql: locations.getItems,
     params,
     route: '/locations/getSelectListItems',
     middleware,
     wrap
   },
   {
-    sql: sql.locations.find,
+    sql: locations.find,
     params,
     route: '/locations/find',
     middleware,
     wrap
   },
   {
-    sql: sql.locations.remove,
+    sql: locations.remove,
     params,
     route: '/locations/remove',
     middleware

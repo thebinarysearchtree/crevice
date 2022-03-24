@@ -1,4 +1,3 @@
-import auth from '../middleware/authentication.js';
 import sql from '../../sql.js';
 import { add, params, userId } from '../utils/handler.js';
 import auth from '../middleware/authentication.js';

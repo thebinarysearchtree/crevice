@@ -6,57 +6,58 @@ import { add, params, userId } from '../utils/handler.js';
 const middleware = [auth, admin];
 
 const wrap = true;
+const areas = sql.areas;
 
 const routes = [
   {
-    sql: sql.areas.insert,
+    sql: areas.insert,
     params,
     route: '/areas/insert',
     middleware
   },
   {
-    sql: sql.areas.update,
+    sql: areas.update,
     params,
     route: '/areas/update',
     middleware
   },
   {
-    sql: sql.areas.getById,
+    sql: areas.getById,
     params,
     route: '/areas/getById',
     middleware,
     wrap
   },
   {
-    sql: sql.areas.getWithLocation,
+    sql: areas.getWithLocation,
     params,
     route: '/areas/getWithLocation',
     middleware,
     wrap
   },
   {
-    sql: sql.areas.getItems,
+    sql: areas.getItems,
     params: userId,
     route: '/areas/getItems',
     middleware: [auth],
     wrap
   },
   {
-    sql: sql.areas.getItemsAsAdmin,
+    sql: areas.getItemsAsAdmin,
     params,
     route: '/areas/getItemsAsAdmin',
     middleware,
     wrap
   },
   {
-    sql: sql.areas.find,
+    sql: areas.find,
     params,
     route: '/areas/find',
     middleware,
     wrap
   },
   {
-    sql: sql.areas.remove,
+    sql: areas.remove,
     params,
     route: '/areas/find',
     middleware

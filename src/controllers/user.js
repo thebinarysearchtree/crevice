@@ -558,6 +558,7 @@ const searchTerm = (req) => {
 }
 
 const wrap = true;
+const users = sql.users;
 
 const routes = [
   {
@@ -615,28 +616,28 @@ const routes = [
     middleware
   },
   {
-    sql: sql.users.findPotentialBookings,
+    sql: users.findPotentialBookings,
     params: searchTerm,
     route: '/users/findPotentialBookings',
     middleware: auth,
     wrap
   },
   {
-    sql: sql.users.findByName,
+    sql: users.findByName,
     params: searchTerm,
     route: '/users/findByName',
     middleware: auth,
     wrap
   },
   {
-    sql: sql.users.getUserDetails,
+    sql: users.getUserDetails,
     params,
     route: '/users/getUserDetails',
     middleware,
     wrap
   },
   {
-    sql: sql.users.remove,
+    sql: users.remove,
     params,
     route: '/users/remove',
     middleware

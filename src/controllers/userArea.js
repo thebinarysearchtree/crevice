@@ -31,9 +31,11 @@ const insertMany = async (req, res) => {
 
 const middleware = [auth, admin];
 
+const userAreas = sql.userAreas;
+
 const routes = [
   {
-    sql: sql.userAreas.insert,
+    sql: userAreas.insert,
     params,
     route: '/userAreas/insert',
     middleware
@@ -44,20 +46,20 @@ const routes = [
     middleware
   },
   {
-    sql: sql.userAreas.update,
+    sql: userAreas.update,
     params,
     route: '/userAreas/update',
     middleware
   },
   {
-    sql: sql.userAreas.find,
+    sql: userAreas.find,
     params,
     route: '/userAreas/find',
     middleware,
-    wrap
+    wrap: true
   },
   {
-    sql: sql.userAreas.remove,
+    sql: userAreas.remove,
     params,
     route: '/userAreas/remove',
     middleware

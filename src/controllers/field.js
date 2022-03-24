@@ -113,6 +113,7 @@ const update = async (req, res) => {
 const middleware = [auth, admin];
 
 const wrap = true;
+const fields = sql.fields;
 
 const routes = [
   {
@@ -126,55 +127,55 @@ const routes = [
     middleware
   },
   {
-    sql: sql.fields.moveUp,
+    sql: fields.moveUp,
     params,
     route: '/fields/moveUp',
     middleware
   },
   {
-    sql: sql.fields.getById,
+    sql: fields.getById,
     params,
     route: '/fields/getById',
     middleware,
     wrap
   },
   {
-    sql: sql.fields.getByType,
+    sql: fields.getByType,
     params: (req) => [['Short', 'Standard', 'Number'], req.user.organisationId],
     route: '/fields/getFilenameFields',
     middleware,
     wrap
   },
   {
-    sql: sql.fields.getByType,
+    sql: fields.getByType,
     params: (req) => [['Short', 'Standard', 'Number', 'Select'], req.user.organisationId],
     route: '/fields/getCsvFields',
     middleware,
     wrap
   },
   {
-    sql: sql.fields.getAllFields,
+    sql: fields.getAllFields,
     params,
     route: '/fields/getAllFields',
     middleware,
     wrap
   },
   {
-    sql: sql.fields.getItems,
+    sql: fields.getItems,
     params,
     route: '/fields/getSelectListItems',
     middleware,
     wrap
   },
   {
-    sql: sql.fields.find,
+    sql: fields.find,
     params,
     route: '/fields/find',
     middleware,
     wrap
   },
   {
-    sql: sql.fields.remove,
+    sql: fields.remove,
     params,
     route: '/fields/remove',
     middleware

@@ -1,7 +1,7 @@
 import pool from '../database/db.js';
 import db from '../utils/db.js';
 import sql from '../../sql.js';
-import { add } from '../utils/handler.js';
+import { add, params } from '../utils/handler.js';
 import auth from '../middleware/authentication.js';
 import { admin, owner } from '../middleware/permission.js';
 
@@ -114,36 +114,41 @@ const update = async (req, res) => {
   }
 }
 
+const middleware = [auth, admin];
+
+const wrap = true;
+const shifts = sql.shifts;
+
 const routes = [
   {
     handler: insert,
     route: '/shifts/insert',
-    middleware: [auth, admin]
+    middleware
   },
   {
     handler: update,
     route: '/shifts/update',
-    middleware: [auth, admin]
+    middleware
   },
   {
-    sql: sql.shifts.find,
+    sql: shifts.find,
     params,
     route: '/shifts/find',
-    middleware: [auth, admin],
-    wrap: true
+    middleware,
+    wrap
   },
   {
-    sql: sql.shifts.getAvailableShifts,
+    sql: shifts.getAvailableShifts,
     params,
     route: '/shifts/getAvailableShifts',
     middleware: [auth, owner],
-    wrap: true
+    wrap
   },
   {
-    sql: sql.shifts.remove,
+    sql: shifts.remove,
     params,
     route: '/shifts/remove',
-    middleware: [auth, admin]
+    middleware
   }
 ];
 
