@@ -1,4 +1,4 @@
-import pool from '../database/db.js';
+import { pool, db } from '../database/db.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { v4 as uuid } from 'uuid';
@@ -8,7 +8,6 @@ import populate from '../database/populate.js';
 import parseCSV from 'csv-parse';
 import { readFile } from 'fs/promises';
 import path from 'path';
-import db from '../utils/db.js';
 import sql from '../../sql.js';
 import { add, params } from '../utils/handler.js';
 import auth from '../middleware/authentication.js';

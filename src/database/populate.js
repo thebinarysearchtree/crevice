@@ -1,4 +1,4 @@
-import db from '../utils/db.js';
+import { db } from './db.js';
 import sql from '../../sql.js';
 
 const defaultTemplates = [

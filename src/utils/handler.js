@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import client from '../database/db.js';
+import { pool as client } from '../database/db.js';
 
 const wrapSql = (sql) => {
   return `

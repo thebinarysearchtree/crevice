@@ -1,5 +1,4 @@
-import pool from '../database/db.js';
-import db from '../utils/db.js';
+import { pool, db } from '../database/db.js';
 import auth from '../middleware/authentication.js';
 import { admin } from '../middleware/permission.js';
 import sql from '../../sql.js';
@@ -15,8 +14,12 @@ const insertSelect = async (params, organisationId, selectItems, client) => {
   const promises = [];
   for (const item of selectItems) {
     const { name, itemNumber } = item;
-    const params = [fieldId, name, itemNumber, organisationId];
-    const promise = db.rowCount(sql.fieldItems.insert, params, client);
+    const promise = db.rowCount(sql.fieldItems.insert, [
+      fieldId, 
+      name, 
+      itemNumber, 
+      organisationId
+    ], client);
     promises.push(promise);
   }
   await Promise.all(promises);

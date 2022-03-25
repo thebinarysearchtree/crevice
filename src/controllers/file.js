@@ -1,4 +1,4 @@
-import db from '../utils/db.js';
+import { db } from '../database/db.js';
 import { add } from '../utils/handler.js';
 import auth from '../middleware/authentication.js';
 import { admin } from '../middleware/permission.js';
@@ -7,9 +7,8 @@ import { files, photos } from '../middleware/upload.js';
 const uploadFiles = async (req, res) => {
   const promises = [];
   for (const file of req.files) {
-    const query = sql.files.insert;
     const params = [...Object.values(file), req.user.id, req.user.organisationId];
-    const promise = db.empty(query, params);
+    const promise = db.empty(sql.files.insert, params);
     promises.push(promise);
   }
   await Promise.all(promises);

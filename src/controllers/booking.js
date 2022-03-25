@@ -1,5 +1,4 @@
-import pool from '../database/db.js';
-import db from '../utils/db.js';
+import { pool, db } from '../database/db.js';
 import sql from '../../sql.js';
 import { add } from '../utils/handler.js';
 import auth from '../middleware/authentication.js';
@@ -16,7 +15,14 @@ const insert = async (req, res) => {
     const promises = [];
     for (const shift of shifts) {
       const { shiftId, shiftRoleId } = shift;
-      const params = [shiftId, shiftRoleId, userId, bookedById, isAdmin, organisationId];
+      const params = [
+        shiftId, 
+        shiftRoleId, 
+        userId, 
+        bookedById, 
+        isAdmin, 
+        organisationId
+      ];
       const promise = db.rowCount(sql.bookings.insert, params, client);
       promises.push(promise);
     }

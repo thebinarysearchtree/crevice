@@ -1,5 +1,5 @@
 import mailer from './email.js';
-import db from '../utils/db.js';
+import { db } from '../database/db.js';
 import sql from '../../sql.js';
 
 const replaceFields = (placeholders, template) => {
