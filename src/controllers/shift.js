@@ -13,33 +13,26 @@ const insert = async (req, res) => {
     await client.query('begin');
     const { notes, questionGroupId } = series;
     const { areaId, times, breakMinutes } = shift;
-    const query = sql.shiftSeries.insert;
-    const params = [times.length === 1, notes, questionGroupId, userId, organisationId];
-    const seriesId = await db.value(query, params, client);
-    let promises = [];
-    for (const range of times) {
-      const { startTime, endTime } = range;
-      const promise = db.empty(sql.shifts.insert, [
-        areaId, 
-        startTime, 
-        endTime, 
-        breakMinutes, 
-        seriesId, 
-        organisationId
-      ], client);
-      promises.push(promise);
-    }
-    await Promise.all(promises);
-    promises = [];
-    for (const shiftRole of shiftRoles) {
-      const promise = db.empty(sql.shiftRoles.insert, [
-        ...Object.values(shiftRole), 
-        seriesId, 
-        organisationId
-      ], client);
-      promises.push(promise);
-    }
-    await Promise.all(promises);
+    const seriesId = await db.value(sql.shiftSeries.insert, [
+      times.length === 1, 
+      notes, 
+      questionGroupId, 
+      userId, 
+      organisationId
+    ], client);
+    await Promise.all(times.map(t => db.empty(sql.shifts.insert, [
+      areaId, 
+      t.startTime, 
+      t.endTime, 
+      breakMinutes, 
+      seriesId, 
+      organisationId
+    ], client)));
+    await Promise.all(shiftRoles.map(sr => db.empty(sql.shiftRoles.insert, [
+      ...Object.values(sr), 
+      seriesId, 
+      organisationId
+    ], client)));
     await client.query('commit');
     return res.json({ rowCount: 1 });
   }
