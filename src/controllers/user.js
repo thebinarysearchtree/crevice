@@ -510,7 +510,7 @@ const find = async (req, res) => {
   const isAdmin = user.isAdmin;
   const organisationId = user.organisationId;
   const areaIds = user.isAdmin ? [] : user.areas.filter(a => a.isAdmin).map(a => a.id);
-  const result = await db.rows(sql.users.find, [
+  const result = await db.text(sql.users.find, [
     searchTerm, 
     roleId, 
     areaId, 
