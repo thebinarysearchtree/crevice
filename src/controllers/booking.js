@@ -12,23 +12,17 @@ const insert = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('begin');
-    const promises = [];
-    for (const shift of shifts) {
-      const { shiftId, shiftRoleId } = shift;
-      const promise = db.rowCount(sql.bookings.insert, [
-        shiftId, 
-        shiftRoleId, 
-        userId, 
-        bookedById, 
-        isAdmin, 
-        organisationId
-      ], client);
-      promises.push(promise);
-    }
+    const promises = shifts.map(s => db.rowCount(sql.bookings.insert, [
+      s.shiftId, 
+      s.shiftRoleId, 
+      userId, 
+      bookedById, 
+      isAdmin, 
+      organisationId
+    ], client));
     const results = await Promise.all(promises);
     await client.query('commit');
-    const rowCount = results.reduce((a, c) => a + c);
-    return res.json({ rowCount });
+    return res.json({ rowCount: results.reduce((a, c) => a + c) });
   }
   catch (e) {
     await client.query('rollback');
