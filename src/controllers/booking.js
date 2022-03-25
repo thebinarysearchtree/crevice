@@ -15,15 +15,14 @@ const insert = async (req, res) => {
     const promises = [];
     for (const shift of shifts) {
       const { shiftId, shiftRoleId } = shift;
-      const params = [
+      const promise = db.rowCount(sql.bookings.insert, [
         shiftId, 
         shiftRoleId, 
         userId, 
         bookedById, 
         isAdmin, 
         organisationId
-      ];
-      const promise = db.rowCount(sql.bookings.insert, params, client);
+      ], client);
       promises.push(promise);
     }
     const results = await Promise.all(promises);

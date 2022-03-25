@@ -18,10 +18,17 @@ const replaceFields = (placeholders, template) => {
 const send = async (type, users, templateId, organisationId) => {
   let template;
   if (templateId) {
-    template = await db.first(sql.emailTemplates.getById, [templateId, type, organisationId]);
+    template = await db.first(sql.emailTemplates.getById, [
+      templateId, 
+      type, 
+      organisationId
+    ]);
   }
   else {
-    template = await db.first(sql.emailTemplates.getDefault, [type, organisationId]);
+    template = await db.first(sql.emailTemplates.getDefault, [
+      type, 
+      organisationId
+    ]);
   }
   const promises = [];
   for (const user of users) {

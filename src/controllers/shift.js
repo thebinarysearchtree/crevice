@@ -19,17 +19,24 @@ const insert = async (req, res) => {
     let promises = [];
     for (const range of times) {
       const { startTime, endTime } = range;
-      const query = sql.shifts.insert;
-      const params = [areaId, startTime, endTime, breakMinutes, seriesId, organisationId];
-      const promise = db.empty(query, params, client);
+      const promise = db.empty(sql.shifts.insert, [
+        areaId, 
+        startTime, 
+        endTime, 
+        breakMinutes, 
+        seriesId, 
+        organisationId
+      ], client);
       promises.push(promise);
     }
     await Promise.all(promises);
     promises = [];
     for (const shiftRole of shiftRoles) {
-      const query = sql.shiftRoles.insert;
-      const params = [...Object.values(shiftRole), seriesId, organisationId];
-      const promise = db.empty(query, params, client);
+      const promise = db.empty(sql.shiftRoles.insert, [
+        ...Object.values(shiftRole), 
+        seriesId, 
+        organisationId
+      ], client);
       promises.push(promise);
     }
     await Promise.all(promises);
@@ -63,10 +70,25 @@ const update = async (req, res) => {
     const promises = [];
     let seriesId = initialSeries.id;
     if (detach) {
-      seriesId = await db.value(sql.shiftSeries.copy, [updatedSeries.id, organisationId], client);
-      await db.empty(sql.shiftRoles.copy, [initialSeries.id, seriesId, organisationId], client);
-      await db.empty(sql.shifts.updateSeriesId, [initialShift.id, seriesId, organisationId], client);
-      await db.empty(sql.bookings.transfer, [initialShift.id, seriesId, organisationId], client);
+      seriesId = await db.value(sql.shiftSeries.copy, [
+        updatedSeries.id, 
+        organisationId
+      ], client);
+      await db.empty(sql.shiftRoles.copy, [
+        initialSeries.id, 
+        seriesId, 
+        organisationId
+      ], client);
+      await db.empty(sql.shifts.updateSeriesId, [
+        initialShift.id, 
+        seriesId, 
+        organisationId
+      ], client);
+      await db.empty(sql.bookings.transfer, [
+        initialShift.id, 
+        seriesId, 
+        organisationId
+      ], client);
       remove = remove.map(sr => ({...sr, id: null, seriesId }));
       update = update.map(sr => ({...sr, id: null, seriesId }));
     }
@@ -85,7 +107,8 @@ const update = async (req, res) => {
           updatedShift.startTime,
           updatedShift.endTime,
           updatedShift.breakMinutes,
-          organisationId], client);
+          organisationId
+        ], client);
         promises.push(promise);
     }
     for (const shiftRole of remove) {
@@ -96,7 +119,11 @@ const update = async (req, res) => {
       promises.push(promise);
     }
     for (const shiftRole of add) {
-      const promise = db.empty(sql.shiftRoles.insert, [...Object.values(shiftRole), initialSeries.id, organisationId], client);
+      const promise = db.empty(sql.shiftRoles.insert, [
+        ...Object.values(shiftRole), 
+        initialSeries.id, 
+        organisationId
+      ], client);
       promises.push(promise);
     }
     for (const shiftRole of update) {
@@ -128,7 +155,12 @@ const find = async (req, res) => {
     startTime += timeZone;
     endTime += timeZone;
   }
-  const shifts = await db.text(sql.shifts.find, [areaId, startTime, endTime, organisationId]);
+  const shifts = await db.text(sql.shifts.find, [
+    areaId, 
+    startTime, 
+    endTime, 
+    organisationId
+  ]);
   return res.send(shifts);
 }
 

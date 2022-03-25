@@ -6,18 +6,16 @@ import { admin } from '../middleware/permission.js';
 
 const insertMany = async (req, res) => {
   const userAreas = req.body;
-  const promises = [];
   const client = await pool.connect();
   try {
     await client.query('begin');
-    for (const userArea of userAreas) {
-      const promise = db.rowCount(sql.userAreas.insert, [...Object.values(userArea), req.user.organisationId], client);
-      promises.push(promise);
-    }
+    const promises = userAreas.map(ua => db.rowCount(sql.userAreas.insert, [
+      ...Object.values(ua),
+      req.user.organisationId
+    ], client));
     const rowCounts = await Promise.all(promises);
     await client.query('commit');
-    const rowCount = rowCounts.reduce((a, c) => a + c);
-    return res.json({ rowCount });
+    return res.json({ rowCount: rowCounts.reduce((a, c) => a + c) });
   }
   catch (e) {
     await client.query('rollback');

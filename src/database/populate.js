@@ -32,8 +32,7 @@ const populate = async (organisationId, client) => {
       subject,
       plaintext
     } = defaultTemplate;
-    const query = sql.emailTemplates.insert;
-    const params = [
+    await db.empty(sql.emailTemplates.insert, [
       type,
       'Default Template',
       subject,
@@ -45,8 +44,7 @@ const populate = async (organisationId, client) => {
       plaintext,
       true,
       organisationId
-    ];
-    await db.empty(query, params, client);
+    ], client);
   }
 }
 

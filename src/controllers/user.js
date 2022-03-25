@@ -278,10 +278,17 @@ const inviteUsers = async (req, res) => {
     };
     try {
       await client.query('begin');
-      const userId = await db.value(sql.users.insert, [...Object.values(user), organisationId], client);
+      const userId = await db.value(sql.users.insert, [
+        ...Object.values(user), 
+        organisationId
+      ], client);
       const promises = [];
       for (const userArea of userAreas) {
-        const promise = db.empty(sql.userAreas.insert, [...Object.values(userArea), userId, organisationId], client);
+        const promise = db.empty(sql.userAreas.insert, [
+          ...Object.values(userArea), 
+          userId, 
+          organisationId
+        ], client);
         promises.push(promise);
       }
       for (const userField of userFields) {
@@ -289,7 +296,11 @@ const inviteUsers = async (req, res) => {
         if (!itemId && !textValue && !dateValue) {
           throw new Error();
         }
-        const promise = db.empty(sql.userFields.insert, [...Object.values(userField), userId, organisationId], client);
+        const promise = db.empty(sql.userFields.insert, [
+          ...Object.values(userField), 
+          userId, 
+          organisationId
+        ], client);
         promises.push(promise);
       }
       await Promise.all(promises);
@@ -326,7 +337,10 @@ const inviteUsers = async (req, res) => {
 
 const resendInvitation = async (req, res) => {
   const { userId, emailTemplateId } = req.body;
-  const user = await db.first(sql.users.getById, [userId, req.user.organisationId]);
+  const user = await db.first(sql.users.getById, [
+    userId, 
+    req.user.organisationId
+  ]);
   if (!user || user.isDisabled) {
     return res.sendStatus(404);
   }
@@ -342,7 +356,10 @@ const resendInvitation = async (req, res) => {
 
 const lostPassword = async (req, res) => {
   const { email, organisationId } = req.body;
-  const { id: userId, firstName } = await db.first(sql.users.setEmailToken, [email, uuid()]);
+  const { id: userId, firstName } = await db.first(sql.users.setEmailToken, [
+    email, 
+    uuid()
+  ]);
   const url = `https://${config.host}/lostpassword/${userId}/${emailToken}`;
   const emailUser = {
     email,
@@ -360,7 +377,11 @@ const changePasswordWithToken = async (req, res) => {
   const client = pool.connect();
   try {
     await client.query('begin');
-    const rowCount = await db.rowCount(sql.users.changePasswordWithToken, [userId, emailToken, hash], client);
+    const rowCount = await db.rowCount(sql.users.changePasswordWithToken, [
+      userId, 
+      emailToken, 
+      hash
+    ], client);
     if (rowCount === 0) {
       await db.empty(sql.users.incrementAttempts, [userId], client);
       await client.query('commit');
@@ -455,13 +476,14 @@ const createToken = (tokenData) => {
 
 const changePassword = async (req, res) => {
   const { existingPassword: suppliedPassword, newPassword } = req.body;
-  const storedPassword = await db.value(sql.users.getPassword, [req.user.id]);
+  const userId = req.user.id;
+  const storedPassword = await db.value(sql.users.getPassword, [userId]);
   const result = await bcrypt.compare(suppliedPassword, storedPassword);
   if (result) {
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash(newPassword, salt);
     const refreshToken = uuid();
-    await db.empty(sql.users.changePassword, [hash, refreshToken, user.id]);
+    await db.empty(sql.users.changePassword, [hash, refreshToken, userId]);
     req.user.refreshToken = refreshToken;
     const token = createToken(req.user);
 
@@ -488,7 +510,7 @@ const find = async (req, res) => {
   const isAdmin = user.isAdmin;
   const organisationId = user.organisationId;
   const areaIds = user.isAdmin ? [] : user.areas.filter(a => a.isAdmin).map(a => a.id);
-  const params = [
+  const result = await db.rows(sql.users.find, [
     searchTerm, 
     roleId, 
     areaId, 
@@ -497,8 +519,8 @@ const find = async (req, res) => {
     areaIds,
     limit, 
     offset, 
-    organisationId];
-  const result = await db.rows(sql.users.find, params);
+    organisationId
+  ]);
   return res.send(result);
 }
 
@@ -518,7 +540,13 @@ const updateImages = async (req, res) => {
     for (const file of files) {
       const { fileId, originalName } = file;
       const fieldValue = path.parse(originalName).name;
-      const params = [fileId, fieldName.toLowerCase(), fieldValue, overwrite, req.user.organisationId];
+      const params = [
+        fileId, 
+        fieldName.toLowerCase(), 
+        fieldValue, 
+        overwrite, 
+        req.user.organisationId
+      ];
       let promise;
       if (isUserField) {
         promise = db.result(sql.users.updateImage, params, client);
