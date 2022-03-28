@@ -1,4 +1,4 @@
-import { pool, db } from '../database/db.js';
+import { pool, db, Client } from '../database/db.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { v4 as uuid } from 'uuid';
@@ -23,11 +23,12 @@ const signUp = async (req, res) => {
   if (!organisationName || !firstName || !lastName || !email || !email.includes('@') || !password.length >= 6) {
     return res.sendStatus(400);
   }
-  const client = await pool.connect();
+  const db = new Client();
+  await db.connect();
   try {
-    await client.query('begin');
-    const organisationId = await db.value(sql.organisations.insert, organisationName, client);
-    await populate(organisationId, client);
+    await db.begin();
+    const organisationId = await db.value(sql.organisations.insert, organisationName);
+    await populate(organisationId, db);
     const isAdmin = true;
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash(password, salt);
@@ -44,8 +45,8 @@ const signUp = async (req, res) => {
       isAdmin
     };
 
-    const userId = await db.value(sql.users.insert, {...user, organisationId }, client);
-    await client.query('commit');
+    const userId = await db.value(sql.users.insert, {...user, organisationId });
+    await db.commit();
 
     const url = `https://${config.host}/invite/${userId}/${emailToken}`;
     const rejected = await mailer.send('SignUp', [{
@@ -60,11 +61,11 @@ const signUp = async (req, res) => {
     return res.sendStatus(500);
   }
   catch (e) {
-    await client.query('rollback');
+    await db.rollback();
     return res.sendStatus(500);
   }
   finally {
-    client.release();
+    db.release();
   }
 }
 
@@ -73,24 +74,25 @@ const verify = async (req, res) => {
   if (!userId || !emailToken) {
     return res.sendStatus(404);
   }
-  const client = await pool.connect();
+  const db = new Client();
+  await db.connect();
   try {
-    await client.query('begin');
-    const verified = await db.value(sql.users.verify, { userId, emailToken }, client);
+    await db.begin();
+    const verified = await db.value(sql.users.verify, { userId, emailToken });
     if (!verified) {
-      await db.empty(sql.users.incrementAttempts, userId, client);
-      await client.query('commit');
+      await db.empty(sql.users.incrementAttempts, userId);
+      await db.commit();
       return res.sendStatus(401);
     }
-    await client.query('commit');
+    await db.commit();
     return res.sendStatus(200);
   }
   catch (e) {
-    await client.query('rollback');
+    await db.rollback();
     return res.sendStatus(500);
   }
   finally {
-    client.release();
+    db.release();
   }
 }
 
@@ -244,7 +246,8 @@ const inviteUsers = async (req, res) => {
   const isAdmin = false;
   const users = [];
   const errorUsers = [];
-  const client = await pool.connect();
+  const db = new Client();
+  await db.connect();
   for (const suppliedUser of suppliedUsers) {
     const {
       firstName,
@@ -280,18 +283,18 @@ const inviteUsers = async (req, res) => {
       pager
     };
     try {
-      await client.query('begin');
+      await db.begin();
       const userId = await db.value(sql.users.insert, {
         ...user, 
         organisationId
-      }, client);
+      });
       const promises = [];
       for (const userArea of userAreas) {
         const promise = db.empty(sql.userAreas.insert, {
           ...userArea, 
           userId, 
           organisationId
-        }, client);
+        });
         promises.push(promise);
       }
       for (const userField of userFields) {
@@ -303,11 +306,11 @@ const inviteUsers = async (req, res) => {
           ...userField, 
           userId, 
           organisationId
-        }, client);
+        });
         promises.push(promise);
       }
       await Promise.all(promises);
-      await client.query('commit');
+      await db.commit();
       users.push({ ...user, id: userId });
     }
     catch (e) {
@@ -315,10 +318,10 @@ const inviteUsers = async (req, res) => {
         type: 'database', 
         message: `Could not insert user ${firstName} ${lastName} with email ${email}` 
       });
-      await client.query('rollback');
+      await db.rollback();
     }
   }
-  client.release();
+  db.release();
   const emailUsers = users.map(u => {
     return {
       email: u.email,
@@ -377,28 +380,29 @@ const changePasswordWithToken = async (req, res) => {
   const { userId, emailToken, password } = req.body;
   const salt = await bcrypt.genSalt(10);
   const hash = await bcrypt.hash(password, salt);
-  const client = pool.connect();
+  const db = new Client();
+  await db.connect();
   try {
-    await client.query('begin');
+    await db.begin();
     const rowCount = await db.rowCount(sql.users.changePasswordWithToken, {
       userId, 
       emailToken, 
       hash
-    }, client);
+    });
     if (rowCount === 0) {
-      await db.empty(sql.users.incrementAttempts, userId, client);
-      await client.query('commit');
+      await db.empty(sql.users.incrementAttempts, userId);
+      await db.commit();
       return res.sendStatus(401);
     }
-    await client.query('commit');
+    await db.commit();
     return res.sendStatus(200);
   }
   catch (e) {
-    await client.query('rollback');
+    await db.rollback();
     return res.sendStatus(500);
   }
   finally {
-    client.release();
+    db.release();
   }
 }
 
@@ -406,20 +410,21 @@ const getToken = async (req, res) => {
   const {
     email,
     password: suppliedPassword } = req.body;
-  const client = await pool.connect();
+  const db = new Client();
+  await db.connect();
   try {
-    await client.query('begin');
-    const user = await db.first(sql.users.getByEmail, email, client);
+    await db.begin();
+    const user = await db.first(sql.users.getByEmail, email);
     if (!user) {
-      await client.query('commit');
+      await db.commit();
       return res.sendStatus(404);
     }
     const { password: storedPassword, ...tokenData } = user;
     const result = await bcrypt.compare(suppliedPassword, storedPassword);
     if (result) {
       if (user.failedPasswordAttempts !== 0) {
-        await db.empty(sql.users.resetAttempts, user.id, client);
-        await client.query('commit');
+        await db.empty(sql.users.resetAttempts, user.id);
+        await db.commit();
       }
       const { token, expiry } = createToken(tokenData);
       const defaultView = user.roles && user.roles.length > 0 ? user.roles.filter(r => r.isPrimary)[0].defaultView : '';
@@ -431,17 +436,17 @@ const getToken = async (req, res) => {
         isAdmin: user.isAdmin });
     }
     else {
-      await db.empty(sql.users.incrementAttempts, user.id, client);
-      await client.query('commit');
+      await db.empty(sql.users.incrementAttempts, user.id);
+      await db.commit();
     }
     return res.sendStatus(401);
   }
   catch (e) {
-    await client.query('rollback');
+    await db.rollback();
     return res.sendStatus(500);
   }
   finally {
-    client.release();
+    db.release();
   }
 }
 
@@ -536,31 +541,26 @@ const changeImage = async (req, res) => {
 const updateImages = async (req, res) => {
   const { files, fieldName, overwrite } = req.body;
   const isUserField = ['Email', 'Phone'].includes(fieldName);
+  const query = isUserField ? sql.users.updateImage : sql.users.updateImageByField;
   const promises = [];
-  const client = await pool.connect();
+  const db = new Client();
+  await db.connect();
   try {
-    await client.query('begin');
+    await db.begin();
     for (const file of files) {
       const { fileId, originalName } = file;
       const fieldValue = path.parse(originalName).name;
-      const params = {
+      const promise = db.result(query, {
         fileId, 
         fieldName: fieldName.toLowerCase(), 
         fieldValue, 
         overwrite, 
         organisationId: req.user.organisationId
-      };
-      let promise;
-      if (isUserField) {
-        promise = db.result(sql.users.updateImage, params, client);
-      }
-      else {
-        promise = db.result(sql.users.updateImageByField, params, client);
-      }
+      });
       promises.push(promise);
     }
     const results = await Promise.all(promises);
-    await client.query('commit');
+    await db.commit();
     const error = overwrite ? 'No matching user found' : 'No matching user found or user already has a profile photo';
     const errors = results.reduce((a, c, i) => {
       if (c.rowCount === 0) {
@@ -571,11 +571,11 @@ const updateImages = async (req, res) => {
     return res.json(errors);
   }
   catch (e) {
-    await client.query('rollback');
+    await db.rollback();
     return res.sendStatus(500);
   }
   finally {
-    client.release();
+    db.release();
   }
 }
 

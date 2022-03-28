@@ -1,4 +1,4 @@
-import { pool, db } from '../database/db.js';
+import { Client } from '../database/db.js';
 import sql from '../../sql.js';
 import { add, params } from '../utils/handler.js';
 import auth from '../middleware/authentication.js';
@@ -6,23 +6,24 @@ import { admin } from '../middleware/permission.js';
 
 const insertMany = async (req, res) => {
   const userAreas = req.body;
-  const client = await pool.connect();
+  const db = new Client();
+  await db.connect();
   try {
-    await client.query('begin');
+    await db.begin();
     const promises = userAreas.map(userArea => db.rowCount(sql.userAreas.insert, {
       ...userArea,
       organisationId: req.user.organisationId
-    }, client));
+    }));
     const rowCounts = await Promise.all(promises);
-    await client.query('commit');
+    await db.commit();
     return res.json({ rowCount: rowCounts.reduce((a, c) => a + c) });
   }
   catch (e) {
-    await client.query('rollback');
+    await db.rollback();
     return res.sendStatus(500);
   }
   finally {
-    client.release();
+    db.release();
   }
 }
 

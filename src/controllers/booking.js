@@ -1,4 +1,4 @@
-import { pool, db } from '../database/db.js';
+import { Client } from '../database/db.js';
 import sql from '../../sql.js';
 import { add } from '../utils/handler.js';
 import auth from '../middleware/authentication.js';
@@ -9,27 +9,28 @@ const insert = async (req, res) => {
   const bookedById = req.user.id;
   const isAdmin = req.user.isAdmin;
   const organisationId = req.user.organisationId;
-  const client = await pool.connect();
+  const db = new Client();
+  await db.connect();
   try {
-    await client.query('begin');
-    const promises = shifts.map(s => db.rowCount(sql.bookings.insert, [
-      s.shiftId, 
-      s.shiftRoleId, 
+    await db.begin();
+    const promises = shifts.map(s => db.rowCount(sql.bookings.insert, {
+      shiftId: s.shiftId, 
+      shiftRoleId: s.shiftRoleId, 
       userId, 
       bookedById, 
       isAdmin, 
       organisationId
-    ], client));
+    }));
     const results = await Promise.all(promises);
-    await client.query('commit');
+    await db.commit();
     return res.json({ rowCount: results.reduce((a, c) => a + c) });
   }
   catch (e) {
-    await client.query('rollback');
+    await db.rollback();
     return res.sendStatus(500);
   }
   finally {
-    client.release();
+    db.release();
   }
 }
 

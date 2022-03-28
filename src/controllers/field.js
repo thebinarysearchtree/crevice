@@ -1,11 +1,11 @@
-import { pool, db } from '../database/db.js';
+import { Client } from '../database/db.js';
 import auth from '../middleware/authentication.js';
 import { admin } from '../middleware/permission.js';
 import sql from '../../sql.js';
 import { add, params } from '../utils/handler.js';
 
-const insertSelect = async (params, organisationId, selectItems, client) => {
-  const fieldId = await db.value(sql.fields.insert, params, client);
+const insertSelect = async (params, organisationId, selectItems, db) => {
+  const fieldId = await db.value(sql.fields.insert, params);
   if (fieldId === null) {
     return 0;
   }
@@ -17,7 +17,7 @@ const insertSelect = async (params, organisationId, selectItems, client) => {
       name, 
       itemNumber, 
       organisationId
-    }, client);
+    });
     promises.push(promise);
   }
   await Promise.all(promises);
@@ -27,45 +27,48 @@ const insertSelect = async (params, organisationId, selectItems, client) => {
 const insert = async (req, res) => {
   const { selectItems, ...field } = req.body;
   const organisationId = req.user.organisationId;
-  const params = { ...field, organisationId };
-  const client = await pool.connect();
+  const params = {...field, organisationId };
+  const db = new Client();
+  await db.connect();
   try {
-    await client.query('begin');
+    await db.begin();
     let rowCount;
     if (selectItems) {
-      rowCount = await insertSelect(params, organisationId, selectItems, client);
+      rowCount = await insertSelect(params, organisationId, selectItems, db);
     }
     else {
-      rowCount = await db.rowCount(sql.fields.insert, params, client);
+      rowCount = await db.rowCount(sql.fields.insert, params);
     }
-    await client.query('commit');
+    await db.commit();
     return res.json({ rowCount });
   }
   catch (e) {
-    await client.query('rollback');
+    await db.rollback();
     return res.sendStatus(500);
   }
   finally {
-    client.release();
+    db.release();
   }
 }
 
 const update = async (req, res) => {
   const { fieldId, name, existingName, itemsToDelete, itemsToAdd, itemsToUpdate } = req.body;
   const organisationId = req.user.organisationId;
-  const client = await pool.connect();
+  const db = new Client();
+  await db.connect();
   try {
-    await client.query('begin');
+    await db.begin();
     let totalRowCount = 0;
-    const query = sql.fields.getById;
-    const params = { fieldId, organisationId };
-    const field = await db.first(query, params, client);
+    const field = await db.first(sql.fields.getById, { 
+      fieldId, 
+      organisationId 
+    });
     if (name !== existingName) {
       const rowCount = await db.rowCount(sql.fields.update, {
         fieldId, 
         name, 
         organisationId
-      }, client);
+      });
       totalRowCount += rowCount;
     }
     if (field.fieldType === 'Select') {
@@ -77,7 +80,7 @@ const update = async (req, res) => {
           const promise = db.rowCount(sql.fieldItems.remove, {
             id, 
             organisationId
-          }, client);
+          });
           promises.push(promise);
         }
       }
@@ -88,7 +91,7 @@ const update = async (req, res) => {
           name, 
           fieldId, 
           organisationId
-        }, client);
+        });
         promises.push(promise);
       }
       for (const item of itemsToUpdate) {
@@ -98,7 +101,7 @@ const update = async (req, res) => {
             id, 
             name, 
             organisationId
-          }, client);
+          });
           promises.push(promise);
         }
       }
@@ -107,15 +110,15 @@ const update = async (req, res) => {
         totalRowCount += rowCount;
       }
     }
-    await client.query('commit');
+    await db.commit();
     return res.json({ rowCount: totalRowCount });
   }
   catch (e) {
-    await client.query('rollback');
+    await db.rollback();
     return res.sendStatus(500);
   }
   finally {
-    client.release();
+    db.release();
   }
 }
 

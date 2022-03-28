@@ -1,4 +1,4 @@
-import { pool, db } from '../database/db.js';
+import { pool, db, Client } from '../database/db.js';
 import sql from '../../sql.js';
 import { add, params } from '../utils/handler.js';
 import auth from '../middleware/authentication.js';
@@ -8,9 +8,10 @@ const insert = async (req, res) => {
   const { series, shift, shiftRoles } = req.body;
   const userId = req.user.id;
   const organisationId = req.user.organisationId;
-  const client = await pool.connect();
+  const db = new Client();
+  await db.connect();
   try {
-    await client.query('begin');
+    await db.begin();
     const { notes, questionGroupId } = series;
     const { areaId, times, breakMinutes } = shift;
     const seriesId = await db.value(sql.shiftSeries.insert, {
@@ -19,7 +20,7 @@ const insert = async (req, res) => {
       questionGroupId, 
       userId, 
       organisationId
-    }, client);
+    });
     await Promise.all(times.map(t => db.empty(sql.shifts.insert, {
       areaId, 
       startTime: t.startTime, 
@@ -27,21 +28,21 @@ const insert = async (req, res) => {
       breakMinutes, 
       seriesId, 
       organisationId
-    }, client)));
+    })));
     await Promise.all(shiftRoles.map(shiftRole => db.empty(sql.shiftRoles.insert, {
       ...shiftRole, 
       seriesId, 
       organisationId
-    }, client)));
-    await client.query('commit');
+    })));
+    await db.commit();
     return res.json({ rowCount: 1 });
   }
   catch (e) {
-    await client.query('rollback');
+    await db.rollback();
     return res.sendStatus(500);
   }
   finally {
-    client.release();
+    db.release();
   }
 }
 
@@ -57,36 +58,37 @@ const update = async (req, res) => {
     detach 
   } = req.body;
   const organisationId = req.user.organisationId;
-  const client = await pool.connect();
+  const db = new Client();
+  await db.connect();
   try {
-    await client.query('begin');
+    await db.begin();
     const promises = [];
     let seriesId = initialSeries.id;
     if (detach) {
       seriesId = await db.value(sql.shiftSeries.copy, {
         seriesId: updatedSeries.id, 
         organisationId
-      }, client);
+      });
       await db.empty(sql.shiftRoles.copy, {
         fromSeriesId: initialSeries.id, 
         toSeriesId: seriesId, 
         organisationId
-      }, client);
+      });
       await db.empty(sql.shifts.updateSeriesId, {
         shiftId: initialShift.id, 
         seriesId, 
         organisationId
-      }, client);
+      });
       await db.empty(sql.bookings.transfer, {
         fromSeriesId: initialShift.id, 
         toSeriesId: seriesId, 
         organisationId
-      }, client);
+      });
       remove = remove.map(sr => ({...sr, id: null, seriesId }));
       update = update.map(sr => ({...sr, id: null, seriesId }));
     }
     if (initialSeries.notes !== updatedSeries.notes) {
-      const promise = db.empty(sql.shiftSeries.update, {...updatedSeries, organisationId }, client);
+      const promise = db.empty(sql.shiftSeries.update, {...updatedSeries, organisationId });
       promises.push(promise);
     }
     if (
@@ -101,14 +103,14 @@ const update = async (req, res) => {
           updatedEndTime: updatedShift.endTime,
           breakMinutes: updatedShift.breakMinutes,
           organisationId
-        }, client);
+        });
         promises.push(promise);
     }
     for (const shiftRole of remove) {
       const { id, seriesId, roleId } = shiftRole;
       const query = id ? sql.shiftRoles.remove : sql.shiftRoles.removeBySeriesId;
       const params = id ? { id, organisationId } : { seriesId, roleId, organisationId };
-      const promise = db.empty(query, params, client);
+      const promise = db.empty(query, params);
       promises.push(promise);
     }
     for (const shiftRole of add) {
@@ -116,26 +118,26 @@ const update = async (req, res) => {
         ...shiftRole, 
         seriesId: initialSeries.id, 
         organisationId
-      }, client);
+      });
       promises.push(promise);
     }
     for (const shiftRole of update) {
       const { id, seriesId, roleId, capacity } = shiftRole;
       const query = id ? sql.shiftRoles.update : sql.shiftRoles.updateBySeriesId;
       const params = id ? { id, capacity, organisationId } : { seriesId, roleId, capacity, organisationId };
-      const promise = db.empty(query, params, client);
+      const promise = db.empty(query, params);
       promises.push(promise);
     }
     await Promise.all(promises);
-    await client.query('commit');
+    await db.commit();
     return res.json({ rowCount: 1 });
   }
   catch (e) {
-    await client.query('rollback');
+    await db.rollback();
     return res.sendStatus(500);
   }
   finally {
-    client.release();
+    db.release();
   }
 }
 

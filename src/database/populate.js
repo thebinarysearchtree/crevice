@@ -1,4 +1,3 @@
-import { db } from './db.js';
 import sql from '../../sql.js';
 
 const defaultTemplates = [
@@ -25,26 +24,26 @@ const defaultTemplates = [
   }
 ];
 
-const populate = async (organisationId, client) => {
+const populate = async (organisationId, db) => {
   for (const defaultTemplate of defaultTemplates) {
     const {
       type,
       subject,
       plaintext
     } = defaultTemplate;
-    await db.empty(sql.emailTemplates.insert, [
+    await db.empty(sql.emailTemplates.insert, {
       type,
-      'Default Template',
+      name: 'Default Template',
       subject,
-      JSON.stringify([{
+      slate: JSON.stringify([{
         type: 'paragraph',
         children: [{ text: plaintext }]
       }]),
-      `<p>${plaintext}</p>`,
+      html: `<p>${plaintext}</p>`,
       plaintext,
-      true,
+      isDefault: true,
       organisationId
-    ], client);
+    });
   }
 }
 
