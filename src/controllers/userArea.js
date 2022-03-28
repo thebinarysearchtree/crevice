@@ -9,10 +9,10 @@ const insertMany = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('begin');
-    const promises = userAreas.map(ua => db.rowCount(sql.userAreas.insert, [
-      ...Object.values(ua),
-      req.user.organisationId
-    ], client));
+    const promises = userAreas.map(userArea => db.rowCount(sql.userAreas.insert, {
+      ...userArea,
+      organisationId: req.user.organisationId
+    }, client));
     const rowCounts = await Promise.all(promises);
     await client.query('commit');
     return res.json({ rowCount: rowCounts.reduce((a, c) => a + c) });

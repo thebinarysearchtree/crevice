@@ -17,7 +17,7 @@ const add = (handlers) => {
     const { sql, params, response, route, middleware = [], wrap = false } = config;
     const handler = config.handler ? config.handler : async (req, res) => {
       const text = wrap ? wrapSql(sql) : sql;
-      const values = params ? params(req) : [];
+      const values = params ? Object.values(params(req)) : null;
       const result = await client.query(text, values);
       if (wrap) {
         return res.send(result.rows[0].result);
@@ -33,8 +33,8 @@ const add = (handlers) => {
 
 const rowCount = (res, result) => res.json({ rowCount: result.rowCount });
 const text = (res, result) => res.send(result.rows[0].result);
-const params = (req) => [...req.body ? Object.values(req.body) : [], req.user.organisationId];
-const userId = (req) => [...req.body ? Object.values(req.body) : [], req.user.id, req.user.organisationId];
+const params = (req) => ({...req.body, organisationId: req.user.organisationId });
+const userId = (req) => ({...req.body, userId: req.user.id, organisationId: req.user.organisationId });
 
 export {
   add,

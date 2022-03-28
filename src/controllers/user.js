@@ -26,7 +26,7 @@ const signUp = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('begin');
-    const organisationId = await db.value(sql.organisations.insert, [organisationName], client);
+    const organisationId = await db.value(sql.organisations.insert, organisationName, client);
     await populate(organisationId, client);
     const isAdmin = true;
     const salt = await bcrypt.genSalt(10);
@@ -44,7 +44,7 @@ const signUp = async (req, res) => {
       isAdmin
     };
 
-    const userId = await db.value(sql.users.insert, [...Object.values(user), organisationId], client);
+    const userId = await db.value(sql.users.insert, {...user, organisationId }, client);
     await client.query('commit');
 
     const url = `https://${config.host}/invite/${userId}/${emailToken}`;
@@ -76,9 +76,9 @@ const verify = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('begin');
-    const verified = await db.value(sql.users.verify, [userId, emailToken], client);
+    const verified = await db.value(sql.users.verify, { userId, emailToken }, client);
     if (!verified) {
-      await db.empty(sql.users.incrementAttempts, [userId], client);
+      await db.empty(sql.users.incrementAttempts, userId, client);
       await client.query('commit');
       return res.sendStatus(401);
     }
@@ -113,7 +113,10 @@ const parse = (content) => {
 }
 
 const transformCsv = async (fileInfo, userAreas, organisationId) => {
-  const file = await db.first(sql.files.getById, [fileInfo.fileId, organisationId]);
+  const file = await db.first(sql.files.getById, { 
+    fileId: fileInfo.fileId, 
+    organisationId 
+  });
   const content = await readFile(`${config.upload.filesDir}/${file.filename}`);
   let records;
   try {
@@ -130,7 +133,7 @@ const transformCsv = async (fileInfo, userAreas, organisationId) => {
     }
   }
   const optionalFieldNames = ['Phone', 'Pager'];
-  const customFields = await db.rows(sql.fields.getCsvFields, [organisationId]);
+  const customFields = await db.rows(sql.fields.getCsvFields, { organisationId });
   const customFieldNames = customFields.map(f => f.name);
   const allFields = [...requiredFieldNames, ...optionalFieldNames, ...customFieldNames];
   for (const column of header) {
@@ -278,17 +281,17 @@ const inviteUsers = async (req, res) => {
     };
     try {
       await client.query('begin');
-      const userId = await db.value(sql.users.insert, [
-        ...Object.values(user), 
+      const userId = await db.value(sql.users.insert, {
+        ...user, 
         organisationId
-      ], client);
+      }, client);
       const promises = [];
       for (const userArea of userAreas) {
-        const promise = db.empty(sql.userAreas.insert, [
-          ...Object.values(userArea), 
+        const promise = db.empty(sql.userAreas.insert, {
+          ...userArea, 
           userId, 
           organisationId
-        ], client);
+        }, client);
         promises.push(promise);
       }
       for (const userField of userFields) {
@@ -296,11 +299,11 @@ const inviteUsers = async (req, res) => {
         if (!itemId && !textValue && !dateValue) {
           throw new Error();
         }
-        const promise = db.empty(sql.userFields.insert, [
-          ...Object.values(userField), 
+        const promise = db.empty(sql.userFields.insert, {
+          ...userField, 
           userId, 
           organisationId
-        ], client);
+        }, client);
         promises.push(promise);
       }
       await Promise.all(promises);
@@ -337,10 +340,10 @@ const inviteUsers = async (req, res) => {
 
 const resendInvitation = async (req, res) => {
   const { userId, emailTemplateId } = req.body;
-  const user = await db.first(sql.users.getById, [
+  const user = await db.first(sql.users.getById, {
     userId, 
-    req.user.organisationId
-  ]);
+    organisationId: req.user.organisationId
+  });
   if (!user || user.isDisabled) {
     return res.sendStatus(404);
   }
@@ -356,10 +359,10 @@ const resendInvitation = async (req, res) => {
 
 const lostPassword = async (req, res) => {
   const { email, organisationId } = req.body;
-  const { id: userId, firstName } = await db.first(sql.users.setEmailToken, [
+  const { id: userId, firstName } = await db.first(sql.users.setEmailToken, {
     email, 
-    uuid()
-  ]);
+    token: uuid()
+  });
   const url = `https://${config.host}/lostpassword/${userId}/${emailToken}`;
   const emailUser = {
     email,
@@ -377,13 +380,13 @@ const changePasswordWithToken = async (req, res) => {
   const client = pool.connect();
   try {
     await client.query('begin');
-    const rowCount = await db.rowCount(sql.users.changePasswordWithToken, [
+    const rowCount = await db.rowCount(sql.users.changePasswordWithToken, {
       userId, 
       emailToken, 
       hash
-    ], client);
+    }, client);
     if (rowCount === 0) {
-      await db.empty(sql.users.incrementAttempts, [userId], client);
+      await db.empty(sql.users.incrementAttempts, userId, client);
       await client.query('commit');
       return res.sendStatus(401);
     }
@@ -406,7 +409,7 @@ const getToken = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('begin');
-    const user = await db.first(sql.users.getByEmail, [email], client);
+    const user = await db.first(sql.users.getByEmail, email, client);
     if (!user) {
       await client.query('commit');
       return res.sendStatus(404);
@@ -415,7 +418,7 @@ const getToken = async (req, res) => {
     const result = await bcrypt.compare(suppliedPassword, storedPassword);
     if (result) {
       if (user.failedPasswordAttempts !== 0) {
-        await db.empty(sql.users.resetAttempts, [user.id], client);
+        await db.empty(sql.users.resetAttempts, user.id, client);
         await client.query('commit');
       }
       const { token, expiry } = createToken(tokenData);
@@ -428,7 +431,7 @@ const getToken = async (req, res) => {
         isAdmin: user.isAdmin });
     }
     else {
-      await db.empty(sql.users.incrementAttempts, [user.id], client);
+      await db.empty(sql.users.incrementAttempts, user.id, client);
       await client.query('commit');
     }
     return res.sendStatus(401);
@@ -446,7 +449,7 @@ const refreshToken = async (req, res) => {
   const expiredToken = req.body.token;
   try {
     const data = jwt.verify(expiredToken, config.key, { ignoreExpiration: true });
-    const user = await db.first(sql.users.getByEmail, [data.email]);
+    const user = await db.first(sql.users.getByEmail, data.email);
     if (!user) {
       return res.sendStatus(404);
     }
@@ -477,13 +480,13 @@ const createToken = (tokenData) => {
 const changePassword = async (req, res) => {
   const { existingPassword: suppliedPassword, newPassword } = req.body;
   const userId = req.user.id;
-  const storedPassword = await db.value(sql.users.getPassword, [userId]);
+  const storedPassword = await db.value(sql.users.getPassword, userId);
   const result = await bcrypt.compare(suppliedPassword, storedPassword);
   if (result) {
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash(newPassword, salt);
     const refreshToken = uuid();
-    await db.empty(sql.users.changePassword, [hash, refreshToken, userId]);
+    await db.empty(sql.users.changePassword, { hash, refreshToken, userId });
     req.user.refreshToken = refreshToken;
     const token = createToken(req.user);
 
@@ -510,7 +513,7 @@ const find = async (req, res) => {
   const isAdmin = user.isAdmin;
   const organisationId = user.organisationId;
   const areaIds = user.isAdmin ? [] : user.areas.filter(a => a.isAdmin).map(a => a.id);
-  const result = await db.text(sql.users.find, [
+  const result = await db.text(sql.users.find, {
     searchTerm, 
     roleId, 
     areaId, 
@@ -520,7 +523,7 @@ const find = async (req, res) => {
     limit, 
     offset, 
     organisationId
-  ]);
+  });
   return res.send(result);
 }
 
@@ -540,13 +543,13 @@ const updateImages = async (req, res) => {
     for (const file of files) {
       const { fileId, originalName } = file;
       const fieldValue = path.parse(originalName).name;
-      const params = [
+      const params = {
         fileId, 
-        fieldName.toLowerCase(), 
+        fieldName: fieldName.toLowerCase(), 
         fieldValue, 
         overwrite, 
-        req.user.organisationId
-      ];
+        organisationId: req.user.organisationId
+      };
       let promise;
       if (isUserField) {
         promise = db.result(sql.users.updateImage, params, client);
@@ -578,11 +581,11 @@ const updateImages = async (req, res) => {
 
 const middleware = [auth, admin];
 
-const searchTerm = (req) => {
-  const query = req.body;
-  query.searchTerm = `%${query.searchTerm}%`;
-  return [...Object.values(query), req.user.organisationId];
-}
+const searchTerm = (req) => ({
+  ...req.body,
+  searchTerm: `%${req.body.searchTerm}%`,
+  organisationId: req.user.organisationId
+});
 
 const wrap = true;
 const users = sql.users;

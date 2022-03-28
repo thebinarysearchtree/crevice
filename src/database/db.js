@@ -15,8 +15,6 @@ catch (e) {
   console.error(e);
 }
 
-const toParams = (...args) => [...Object.values(args[0]), ...args.slice(1)];
-
 const wrap = (sql) => {
   return `
     with wrap_result as (${sql}) 
@@ -24,23 +22,33 @@ const wrap = (sql) => {
     from wrap_result`;
 }
 
+const toValues = (params) => {
+  if (params === undefined) {
+    return null;
+  }
+  if (typeof params === 'string' || typeof params === 'number' || typeof params === 'boolean' || params instanceof Date || typeof params === 'bigint' || params === null) {
+    return [params];
+  }
+  return Object.values(params);
+}
+
 const rowCount = async (sql, params, client = pool) => {
-  const result = await client.query(sql, params);
+  const result = await client.query(sql, toValues(params));
   return result.rowCount;
 }
 
 const rows = async (sql, params, client = pool) => {
-  const result = await client.query(wrap(sql), params);
+  const result = await client.query(wrap(sql), toValues(params));
   return JSON.parse(result.rows[0].result, reviver);
 }
 
 const text = async (sql, params, client = pool) => {
-  const result = await client.query(wrap(sql), params);
+  const result = await client.query(wrap(sql), toValues(params));
   return result.rows[0].result;
 }
 
 const first = async (sql, params, client = pool) => {
-  const result = await client.query(wrap(sql), params);
+  const result = await client.query(wrap(sql), toValues(params));
   const parsed = JSON.parse(result.rows[0].result, reviver);
   return parsed.length === 0 ? null : parsed[0];
 }
@@ -48,19 +56,19 @@ const first = async (sql, params, client = pool) => {
 const value = async (sql, params, client = pool) => {
   const result = await client.query({
     text: sql, 
-    values: params,
+    values: toValues(params),
     rowMode: 'array'
   });
   return result.rows.length === 0 ? null : result.rows[0][0];
 }
 
 const result = async (sql, params, client = pool) => {
-  const result = await client.query(sql, params);
+  const result = await client.query(sql, toValues(params));
   return result;
 }
 
 const empty = async (sql, params, client = pool) => {
-  await client.query(sql, params);
+  await client.query(sql, toValues(params));
 }
 
 const db = {
@@ -75,6 +83,5 @@ const db = {
 
 export {
   pool,
-  db,
-  toParams
+  db
 };

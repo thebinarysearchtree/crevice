@@ -12,12 +12,12 @@ const insertSelect = async (params, organisationId, selectItems, client) => {
   const promises = [];
   for (const item of selectItems) {
     const { name, itemNumber } = item;
-    const promise = db.rowCount(sql.fieldItems.insert, [
+    const promise = db.rowCount(sql.fieldItems.insert, {
       fieldId, 
       name, 
       itemNumber, 
       organisationId
-    ], client);
+    }, client);
     promises.push(promise);
   }
   await Promise.all(promises);
@@ -27,7 +27,7 @@ const insertSelect = async (params, organisationId, selectItems, client) => {
 const insert = async (req, res) => {
   const { selectItems, ...field } = req.body;
   const organisationId = req.user.organisationId;
-  const params = [...Object.values(field), organisationId];
+  const params = { ...field, organisationId };
   const client = await pool.connect();
   try {
     await client.query('begin');
@@ -58,14 +58,14 @@ const update = async (req, res) => {
     await client.query('begin');
     let totalRowCount = 0;
     const query = sql.fields.getById;
-    const params = [fieldId, organisationId];
+    const params = { fieldId, organisationId };
     const field = await db.first(query, params, client);
     if (name !== existingName) {
-      const rowCount = await db.rowCount(sql.fields.update, [
+      const rowCount = await db.rowCount(sql.fields.update, {
         fieldId, 
         name, 
         organisationId
-      ], client);
+      }, client);
       totalRowCount += rowCount;
     }
     if (field.fieldType === 'Select') {
@@ -74,31 +74,31 @@ const update = async (req, res) => {
       for (const item of itemsToDelete) {
         const { id } = item;
         if (existingItemIds.includes(id)) {
-          const promise = db.rowCount(sql.fieldItems.remove, [
+          const promise = db.rowCount(sql.fieldItems.remove, {
             id, 
             organisationId
-          ], client);
+          }, client);
           promises.push(promise);
         }
       }
       for (const item of itemsToAdd) {
         const { id, name } = item;
-        const promise = db.rowCount(sql.fieldItems.insert, [
+        const promise = db.rowCount(sql.fieldItems.insert, {
           id, 
           name, 
           fieldId, 
           organisationId
-        ], client);
+        }, client);
         promises.push(promise);
       }
       for (const item of itemsToUpdate) {
         const { id, name } = item;
         if (existingItemIds.includes(id)) {
-          const promise = db.rowCount(sql.fieldItems.update, [
+          const promise = db.rowCount(sql.fieldItems.update, {
             id, 
             name, 
             organisationId
-          ], client);
+          }, client);
           promises.push(promise);
         }
       }
@@ -150,14 +150,14 @@ const routes = [
   },
   {
     sql: fields.getByType,
-    params: (req) => [['Short', 'Standard', 'Number'], req.user.organisationId],
+    params: (req) => ({ types: ['Short', 'Standard', 'Number'], organisationId: req.user.organisationId }),
     route: '/fields/getFilenameFields',
     middleware,
     wrap
   },
   {
     sql: fields.getByType,
-    params: (req) => [['Short', 'Standard', 'Number', 'Select'], req.user.organisationId],
+    params: (req) => ({ types: ['Short', 'Standard', 'Number', 'Select'], organisationId: req.user.organisationId }),
     route: '/fields/getCsvFields',
     middleware,
     wrap

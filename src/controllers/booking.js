@@ -43,7 +43,7 @@ add([
   },
   {
     sql: sql.bookings.remove,
-    params: (req) => [...Object.values(req.body), req.user.isAdmin, req.user.organisationId],
+    params: (req) => ({...req.body, isAdmin: req.user.isAdmin, organisationId: req.user.organisationId }),
     route: '/bookings/remove',
     middleware
   }

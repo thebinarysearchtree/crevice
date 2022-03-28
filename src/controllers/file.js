@@ -7,11 +7,11 @@ import { files, photos } from '../middleware/upload.js';
 const uploadFiles = async (req, res) => {
   const promises = [];
   for (const file of req.files) {
-    const promise = db.empty(sql.files.insert, [
-      ...Object.values(file), 
-      req.user.id, 
-      req.user.organisationId
-    ]);
+    const promise = db.empty(sql.files.insert, {
+      ...file, 
+      userId: req.user.id, 
+      organisationId: req.user.organisationId
+    });
     promises.push(promise);
   }
   await Promise.all(promises);
