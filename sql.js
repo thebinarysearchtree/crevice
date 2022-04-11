@@ -2,22 +2,18 @@ import { readdir, readFile } from 'fs/promises';
 
 const sql = {};
 
-const loadFiles = async () => {
-  const dir = './src/sql';
-  const folders = await readdir(dir);
-  for (const folder of folders) {
-    const name = folder.endsWith('s') ? folder : folder + 's';
-    sql[name] = {};
-    const path = `${dir}/${folder}`;
-    const files = await readdir(path);
-    for (const file of files) {
-      const queryName = file.split('.')[0];
-      const query = await readFile(`${path}/${file}`, { encoding: 'utf8' });
-      sql[name][queryName] = query;
-    }
+const root = './src/sql';
+const folders = await readdir(root);
+for (const folder of folders) {
+  const table = folder.endsWith('s') ? folder : folder + 's';
+  sql[table] = {};
+  const path = `${root}/${folder}`;
+  const filenames = await readdir(path);
+  for (const filename of filenames) {
+    const query = filename.split('.')[0];
+    const text = await readFile(`${path}/${filename}`, { encoding: 'utf8' });
+    sql[table][query] = text;
   }
 }
-
-await loadFiles();
 
 export default sql;
