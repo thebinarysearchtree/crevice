@@ -1,4 +1,4 @@
-import { pool, db, Client } from '../database/db.js';
+import { db, Client } from '../database/db.js';
 import sql from '../../sql.js';
 import { add, params } from '../utils/handler.js';
 import auth from '../middleware/authentication.js';
